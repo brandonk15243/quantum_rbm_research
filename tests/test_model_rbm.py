@@ -11,9 +11,9 @@ class TestModelRBM(unittest.TestCase):
         Test that model initialization works as intended
         """
         num_vis, num_hid = 2, 3
-        test_weights = np.random.rand(num_vis, num_hid)
+        test_weights = torch.randn(num_vis, num_hid)
         test_vis_bias = torch.randn(num_vis)
-        test_hid_bias = [1 for _ in range(num_hid)]
+        test_hid_bias = torch.randn(num_hid)
 
         test_RBM = RBM(num_vis, num_hid)
 
@@ -47,17 +47,18 @@ class TestModelRBM(unittest.TestCase):
         training
         """
         num_vis, num_hid = 4, 2
-        test_RBM = RBM(num_vis, num_hid, k=25, learning_rate=2)
+        test_RBM = RBM(num_vis, num_hid, k=25, alpha=2)
         epochs = 50
         target = torch.Tensor([0,1,1,0])
 
         for ep in range(epochs):
-            test_RBM.train(target)
+            test_RBM.cdk(target)
 
-        check = test_RBM.gibbs_sampling(
-            torch.randn(num_vis),
-            samples=400,
-            round=True
+        check = torch.round(
+            test_RBM.gibbs_sampling(
+                torch.randn(num_vis),
+                samples=400
+                )
             )
 
         torch.testing.assert_close(
