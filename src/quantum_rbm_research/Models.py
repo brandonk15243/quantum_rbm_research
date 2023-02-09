@@ -74,11 +74,11 @@ class RBM():
 
         return vis_prob, vis_bin
 
-    def sample(self, vis_initial, activation='sigmoid'):
+    def gibbs_step(self, vis_binary, activation='sigmoid'):
         # Perform an upwards then downwards sample
         return self.sample_visible(
             self.sample_hidden(
-                vis_initial,
+                vis_binary,
                 activation)[1],
             activation
             )
@@ -115,9 +115,9 @@ class RBM():
 
     def gibbs_sampling(self, vis_initial, samples=10, round=False):
         distribution = torch.zeros(self.num_vis)
-        vis_bin = self.sample(vis_initial)[1]
+        vis_bin = self.gibbs_step(vis_initial)[1]
         for i in range(samples-1):
-            vis_bin = self.sample(vis_bin)[1]
+            vis_bin = self.gibbs_step(vis_bin)[1]
             distribution += vis_bin
         if round:
             return torch.round(distribution/samples)
@@ -132,6 +132,13 @@ class RBM():
             (torch.exp(x) + torch.exp(-x))
             )
 
+    def energy():
+        return
+
+
+
 class BM():
     def __init__(self):
         return
+
+# eqn. 21
