@@ -4,6 +4,7 @@ from torch import Tensor
 import unittest
 
 from quantum_rbm_research.Models import RBM
+import quantum_rbm_research.utils as utils
 
 class TestModelRBM(unittest.TestCase):
     def test_model_init(self):
@@ -65,6 +66,52 @@ class TestModelRBM(unittest.TestCase):
             target,
             check
             )
+
+    def test_energy(self):
+        """
+        Test that energy function works as intended on simple model
+        """
+        num_vis, num_hid = 2, 2
+        test_W = torch.Tensor([[1,-1],[0,1]])
+        test_vis_bias = torch.Tensor([1,2])
+        test_hid_bias = torch.Tensor([1,0])
+        vis, hid = torch.randn(num_vis), torch.randn(num_hid)
+
+        test_RBM = RBM(num_vis, num_hid)
+        test_RBM.set_weights(test_W)
+        test_RBM.set_vis_bias(test_vis_bias)
+        test_RBM.set_hid_bias(test_hid_bias)
+
+        # Energy by hand
+        calc_energy = -(
+            test_W[0][0]*vis[0]*hid[0] + test_W[1][0]*vis[1]*hid[0] +
+            test_W[0][1]*vis[0]*hid[1] + test_W[1][1]*vis[1]*hid[1] +
+            vis.t()@test_vis_bias + hid.t()@test_hid_bias
+            )
+
+        # Assert close
+        RBM_energy = test_RBM.energy(vis, hid)
+
+        torch.testing.assert_close(calc_energy, RBM_energy)
+
+    def test_boltzmann_distribution(self):
+        """
+        Test that sampled distribution follows Boltzmann distribution.
+        Distribution should follow
+        p(v,h) = exp(-beta * E) / Z
+        """
+
+        num_vis, num_hid = 2,2
+        W = torch.Tensor([[1,1],[1,1]])
+        test_RBM = RBM(num_vis, num_hid)
+        test_RBM.set_weights(W)
+
+        # First, get all possible configurations
+        N = num_vis + num_hid
+        dist = test_RBM.get_boltzmann_distribution()
+        print(sum(dist[:,-1]))
+
+
 
 
 if __name__=="__main__":
