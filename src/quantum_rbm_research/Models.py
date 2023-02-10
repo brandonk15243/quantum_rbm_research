@@ -2,6 +2,8 @@ import numpy as np
 import torch
 import torch.nn.functional as Func
 
+import quantum_rbm_research.utils as utils
+
 class RBM():
     def __init__(self, num_vis, num_hid, k=1, alpha=1e-3, batch_size=1):
         """
@@ -72,10 +74,7 @@ class RBM():
         prob_h = act_func(Func.linear(vis, self.W.t(), self.hid_bias))
         return prob_h
 
-    def sample_h(
-        self,
-        vis: torch.Tensor,
-        activation='sigmoid',
+    def sample_h(self, vis: torch.Tensor, activation='sigmoid',
         sampling_dist='bernoulli'):
         """
         Description: sample h nodes using chosen sampling distribution
@@ -117,10 +116,7 @@ class RBM():
         prob_v = act_func(Func.linear(hid, self.W, self.vis_bias))
         return prob_v
 
-    def sample_v(
-        self,
-        hid: torch.Tensor,
-        activation='sigmoid',
+    def sample_v(self, hid: torch.Tensor, activation='sigmoid',
         sampling_dist='bernoulli'):
         """
         Description: sample v nodes using chosen sampling distribution
@@ -229,21 +225,51 @@ class RBM():
         Returns:
             energy of RBM
         """
-        return -(v.t()@self.W@h.t() + v.t()@self.vis_bias + h.t()@self.hid_bias)
+        return -(v.t()@self.W@h + v.t()@self.vis_bias + h.t()@self.hid_bias)
+
+    def get_boltzmann_distribution(self):
+        """
+        Description: get boltzmann distribution of RBM
+        Returns:
+            dist (Tensor)
+        """
+
+        # dist_tensor (2^N x N+1) format:
+        # first num_vis columns: binary values of visible nodes
+        # next num_hid columns: binary values of hidden nodes
+        # last column: probability of configuration
+        N = self.num_hid + self.num_vis
+        dist_tensor = torch.cat((utils.combinations(N), torch.zeros((2**N,1))), dim=1)
+
+        # Calculate all energy configurations in batch
+        # vis (2^N x num_vis): each row is visible config
+        # hid (2^N x num_hid): each row is hidden config
+        # weight energy:
+        #  sum((vis@W)*hid, dim=1) (2^N x 1) = column where each row represents weight energy
+        #   v.t()@W@h
+        # bias energy:
+        #   vis@vis_bias (2^N x 1) = column where each row represents bias energy
+        #   (same for hidden)
+        vis = dist_tensor[:,:self.num_vis]
+        hid = dist_tensor[:,self.num_vis:-1]
+
+        energy = -(
+            torch.sum(vis@self.W*hid,dim=1) +
+            vis@self.vis_bias.t() +
+            hid@self.hid_bias.t()
+            )
+
+        dist_tensor[:,-1] = torch.exp(-energy)
+        partition = torch.sum(dist_tensor[:,-1])
+        dist_tensor[:,-1] /= partition
+
+        return dist_tensor
 
     def _sigmoid(self, x):
         return 1 / (1 + torch.exp(-x))
 
     def _tanh(self, x):
-        return (
-            (torch.exp(x) - torch.exp(-x)) /
-            (torch.exp(x) + torch.exp(-x))
-            )
+        return (torch.exp(x) - torch.exp(-x)) / (torch.exp(x) + torch.exp(-x))
 
-
-
-class BM():
-    def __init__(self):
-        return
 
 # eqn. 21
