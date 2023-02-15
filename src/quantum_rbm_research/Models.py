@@ -193,7 +193,7 @@ class RBM():
             )
         return sampled_vis
 
-    def gibbs_sampling(self, vis_initial, samples=10, mode='both'):
+    def gibbs_sampling(self, vis_initial, samples=10):
         """
         Description: Perform gibbs sampling
         Parameters:
@@ -201,23 +201,38 @@ class RBM():
             samples (int): number of gibbs steps to perform
             mode (str): which nodes (visible, hidden) to return
         Returns:
-            distribution
+            dist_tensor (Tensor): distribution (last column = proportions)
         """
-        if mode=='both':
-            N = self.num_vis + self.num_hid
-        elif mode=='vis':
-            N = self.num_vis
-        elif mode=='hid':
-            N = self.num_hid
-        else:
-            print("Invalid mode. Defaulting to 'both'")
-            N = self.num_vis + self.num_hid
-        count = torch.zeros(N)
-        vis_bin = self.gibbs_step(vis_initial)
-        for i in range(samples-1):
-            vis_bin = self.gibbs_step(vis_bin)
-            distribution += vis_bin
-        return distribution/samples
+
+        # dist_tensor: (2^N x N+1)
+        #   dist_tensor[:, :N] = node configuration (visible then hidden)
+        #   dist_tensor[:, -1] = proportion of samples with configuration of row
+        N = self.num_vis + self.num_hid
+        dist_tensor = torch.cat(
+            (utils.combinations(N), torch.zeros((2**N,1))),
+            dim=1
+            )
+
+        for i in range(samples):
+            # Get config of vis and hid nodes
+            if i==0:
+                hid_bin = self.sample_h(vis_initial)
+            else:
+                hid_bin = self.sample_h(vis_bin)
+            vis_bin = self.sample_v(hid_bin)
+
+            # Concatenate into 1 tensor (row vector)
+            config = torch.cat((vis_bin, hid_bin), dim=0)
+
+            # Get mask of matching column
+            mask = (dist_tensor[:,:N]==config).all(dim=1)
+
+            # Add to count
+            dist_tensor[mask, -1] += 1
+
+        # Divide by sample size
+        dist_tensor[:,-1] /= samples
+        return dist_tensor
 
     def energy(self, v, h):
         """
@@ -239,10 +254,9 @@ class RBM():
             dist (Tensor):
         """
 
-        # dist_tensor (2^N x N+1) format:
-        # first num_vis columns: binary values of visible nodes
-        # next num_hid columns: binary values of hidden nodes
-        # last column: probability of configuration
+        # dist_tensor: (2^N x N+1)
+        #   dist_tensor[:, :N] = node configuration (visible then hidden)
+        #   dist_tensor[:, -1] = proportion of samples with configuration of row
         N = self.num_hid + self.num_vis
         dist_tensor = torch.cat((utils.combinations(N), torch.zeros((2**N,1))), dim=1)
 
