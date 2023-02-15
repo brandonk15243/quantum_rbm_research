@@ -7,8 +7,7 @@ import quantum_rbm_research.utils as utils
 class RBM():
     def __init__(self, num_vis, num_hid, k=1, alpha=1e-3, batch_size=1):
         """
-        this is a class for an RBM
-
+        This is a class for a general RBM.
         Attributes:
             num_vis (int): number of visible nodes
             num_hid (int): number of hidden nodes
@@ -16,7 +15,7 @@ class RBM():
             alpha (float): learning rate
             batch_size (int): batch size for batched learning
         """
-        # RBM Params
+        # Params
         self.num_vis = num_vis
         self.num_hid = num_hid
         self.k = k
@@ -24,46 +23,46 @@ class RBM():
         self.error = 0
         self.batch_size = batch_size
 
-        # Weights and bias
+        # Weights and biases
         self.W = torch.randn(num_vis, num_hid) * np.sqrt(0.001)
         self.vis_bias = torch.ones(num_vis) * 0.25
         self.hid_bias = torch.zeros(num_hid)
 
-    def set_weights(self, W: torch.Tensor):
+    def set_weights(self, W):
         """
-        Definition: set RBM weights
+        Description: Set weight tensor
         Parameters:
             W (Tensor): input weight matrix
         """
         if W.size()==self.W.size():
             self.W = W
 
-    def set_vis_bias(self, vis_bias: torch.Tensor):
+    def set_vis_bias(self, vis_bias):
         """
-        Description: set RBM visible biases
+        Description: Set visible bias tensor
         Parameters:
             vis_bias (Tensor): input vis biases
         """
         if vis_bias.size() == self.vis_bias.size():
             self.vis_bias = vis_bias
 
-    def set_hid_bias(self, hid_bias: torch.Tensor):
+    def set_hid_bias(self, hid_bias):
         """
-        Description: Set RBM hidden biases
+        Description: Set hidden bias tensor
         Parameters:
             hid_bias (Tensor): input hid biases
         """
         if hid_bias.size() == self.hid_bias.size():
             self.hid_bias = hid_bias
 
-    def prob_h_given_v(self, vis: torch.Tensor, activation='sigmoid'):
+    def prob_h_given_v(self, vis, activation='sigmoid'):
         """
-        Description: get conditional prob. of h given v values
+        Description: Calculate p(h==1|v)
         Parameters:
             vis (Tensor): visible node values
             activation (str): choice of activation function
         Returns:
-            prob_h: conditional prob. of hidden nodes
+            prob_h (Tensor): conditional prob. of hidden nodes
         """
         if activation=='sigmoid':
             act_func = self._sigmoid
@@ -74,38 +73,14 @@ class RBM():
         prob_h = act_func(Func.linear(vis, self.W.t(), self.hid_bias))
         return prob_h
 
-    def sample_h(self, vis: torch.Tensor, activation='sigmoid',
-        sampling_dist='bernoulli'):
+    def prob_v_given_h(self, hid, activation='sigmoid'):
         """
-        Description: sample h nodes using chosen sampling distribution
-        from conditional probability
-        Parameters:
-            vis (Tensor): visible node values
-            activation (str): choice of activation function
-            sampling_dist (str): choice of sampling distribution
-        Returns:
-            hid_bin: sampled hidden values from chosen distribution
-        """
-        if sampling_dist=='bernoulli':
-            sampling_func = torch.bernoulli
-        else:
-            print("Invalid sampling dist. Defaulting to bernoulli")
-            sampling_func = torch.bernoulli
-
-        prob_h = self.prob_h_given_v(vis, activation)
-
-        hid_bin = sampling_func(prob_h)
-
-        return hid_bin
-
-    def prob_v_given_h(self, hid: torch.Tensor, activation='sigmoid'):
-        """
-        Description: get conditional prob. of v given h values
+        Description: Calculate p(v==1|h)
         Parameters:
             hid (Tensor): hidden node values
             activation (str): choice of activation function
         Returns:
-            prob_v: conditional prob. of visible nodes
+            prob_v (Tensor): conditional prob. of visible nodes
         """
         if activation=='sigmoid':
             act_func = self._sigmoid
@@ -116,17 +91,38 @@ class RBM():
         prob_v = act_func(Func.linear(hid, self.W, self.vis_bias))
         return prob_v
 
-    def sample_v(self, hid: torch.Tensor, activation='sigmoid',
-        sampling_dist='bernoulli'):
+    def sample_h(self, vis, activation='sigmoid', sampling_dist='bernoulli'):
         """
-        Description: sample v nodes using chosen sampling distribution
-        from conditional probability
+        Description: Sample hidden nodes given visible nodes using given
+        sampling distribution
+        Parameters:
+            vis (Tensor): visible node values
+            activation (str): choice of activation function
+            sampling_dist (str): choice of sampling distribution
+        Returns:
+            hid_bin (Tensor): sampled hidden values from chosen distribution
+        """
+        if sampling_dist=='bernoulli':
+            sampling_func = torch.bernoulli
+        else:
+            print("Invalid sampling dist. Defaulting to bernoulli")
+            sampling_func = torch.bernoulli
+
+        prob_h = self.prob_h_given_v(vis, activation)
+        hid_bin = sampling_func(prob_h)
+
+        return hid_bin
+
+    def sample_v(self, hid, activation='sigmoid', sampling_dist='bernoulli'):
+        """
+        Description: Sample hidden nodes given visible nodes using given
+        sampling distribution
         Parameters:
             hid (Tensor): hidden node values
             activation (str): choice of activation function
             sampling_dist (str): choice of sampling distribution
         Returns:
-            vis_bin: sampled hidden values from chosen distribution
+            vis_bin (Tensor): sampled hidden values from chosen distribution
         """
         if sampling_dist=='bernoulli':
             sampling_func = torch.bernoulli
@@ -135,36 +131,18 @@ class RBM():
             sampling_func = torch.bernoulli
 
         prob_v = self.prob_v_given_h(hid, activation)
-
         vis_bin = sampling_func(prob_v)
 
         return vis_bin
 
-    def gibbs_step(self, vis: torch.Tensor, activation='sigmoid',
-        sampling_dist='bernoulli'):
+    def cdk(self, input_data):
         """
-        Description: perform a gibbs step given visible values
-        Parameters:
-            vis (Tensor): visible values
-            activation (str): choice of activation function
-            sampling_dist (str): choice of sampling distribution
-        Returns:
-            sampled visible values
-        """
-        # Perform a gibbs step given visible values
-        return self.sample_v(
-            self.sample_h(vis, activation, sampling_dist),
-            activation,
-            sampling_dist
-            )
-
-    def cdk(self, input_data: torch.Tensor):
-        """
-        Description: train model using contrastive divergence method
+        Description: Train model using contrastive divergence where
+        parameter k=self.k
         Parameters:
             input_data (Tensor): data to train model towards
         Returns:
-            self.error: squared error after training
+            self.error (Tensor): squared error after training
         """
         # First forward pass
         # Collect positive statistic <p_ip_j>_{data}
@@ -198,24 +176,50 @@ class RBM():
         self.error = torch.sum((input_data - vis_prob)**2)
         return self.error
 
-    def gibbs_sampling(self, vis_initial: torch.Tensor, samples=10):
+    def gibbs_step(self, vis, activation='sigmoid', sampling_dist='bernoulli'):
         """
-        Description: perform gibbs sampling given initial visible values
-        [samples] times
+        Description: Perform a gibbs step given visible values
+        Parameters:
+            vis (Tensor): visible values
+            activation (str): choice of activation function
+            sampling_dist (str): choice of sampling distribution
+        Returns:
+            sampled_vis (Tensor): sampled visible values
+        """
+        sampled_vis = self.sample_v(
+            self.sample_h(vis, activation, sampling_dist),
+            activation,
+            sampling_dist
+            )
+        return sampled_vis
+
+    def gibbs_sampling(self, vis_initial, samples=10, mode='both'):
+        """
+        Description: Perform gibbs sampling
         Parameters:
             vis_initial (Tensor): initial values to begin sampling
             samples (int): number of gibbs steps to perform
+            mode (str): which nodes (visible, hidden) to return
         Returns:
-            histogram of distribution
+            distribution
         """
-        distribution = torch.zeros(self.num_vis)
+        if mode=='both':
+            N = self.num_vis + self.num_hid
+        elif mode=='vis':
+            N = self.num_vis
+        elif mode=='hid':
+            N = self.num_hid
+        else:
+            print("Invalid mode. Defaulting to 'both'")
+            N = self.num_vis + self.num_hid
+        count = torch.zeros(N)
         vis_bin = self.gibbs_step(vis_initial)
         for i in range(samples-1):
             vis_bin = self.gibbs_step(vis_bin)
             distribution += vis_bin
         return distribution/samples
 
-    def energy(self, v: torch.Tensor, h: torch.Tensor):
+    def energy(self, v, h):
         """
         Description: compute the energy of the RBM given vectors v and h
         representing binary values of visible and hidden nodes
@@ -229,9 +233,10 @@ class RBM():
 
     def get_boltzmann_distribution(self):
         """
-        Description: get boltzmann distribution of RBM
+        Description: get boltzmann distribution of RBM.
+
         Returns:
-            dist (Tensor)
+            dist (Tensor):
         """
 
         # dist_tensor (2^N x N+1) format:
