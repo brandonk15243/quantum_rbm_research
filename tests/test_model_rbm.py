@@ -47,25 +47,38 @@ class TestModelRBM(unittest.TestCase):
         Test that gibbs sampling returns learned distribution after
         training
         """
-        num_vis, num_hid = 4, 2
+        num_vis, num_hid = 3, 2
         test_RBM = RBM(num_vis, num_hid, k=25, alpha=2)
         epochs = 50
-        target = torch.Tensor([0,1,1,0])
+        target = torch.Tensor([0,1,1])
 
         for ep in range(epochs):
             test_RBM.cdk(target)
 
-        check = torch.round(
-            test_RBM.gibbs_sampling(
-                torch.randn(num_vis),
-                samples=400
-                )
+        check = test_RBM.gibbs_sampling(
+            torch.randn(num_vis),
+            samples=400
             )
 
-        torch.testing.assert_close(
-            target,
-            check
-            )
+        # Vis node config with highest proportion should match target
+        # and store in new tensor
+        vis_dist = torch.empty((2**num_vis, num_vis+1))
+        # First, group by visible configs
+        vis_configs = utils.combinations(num_vis)
+        for i, vis_config in enumerate(vis_configs):
+            # Get mask to group by
+            mask = (check[:,:num_vis]==vis_config).all(dim=1)
+            # Get sum of grouped
+            prop = check[mask, -1].sum()
+            # Remove all rows
+            check = check[~mask]
+            # Create new row with aggregated sum
+            vis_dist[i, :num_vis] = vis_config
+            vis_dist[i, -1] = prop
+
+        # Vis node config with highest proportion should match target
+        max_ind = (vis_dist[:,-1]==torch.max(vis_dist[:,-1])).nonzero()[0][0]
+        torch.testing.assert_close(vis_dist[max_ind,:num_vis], target)
 
     def test_energy(self):
         """
@@ -109,7 +122,7 @@ class TestModelRBM(unittest.TestCase):
         # First, get all possible configurations
         N = num_vis + num_hid
         dist = test_RBM.get_boltzmann_distribution()
-        print(sum(dist[:,-1]))
+        #print(dist)
 
 
 
