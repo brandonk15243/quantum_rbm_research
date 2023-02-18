@@ -193,6 +193,7 @@ class RBM():
             )
         return sampled_vis
 
+    # make separate collect statistics function to get distribution
     def gibbs_sampling(self, vis_initial, samples=10):
         """
         Description: Perform gibbs sampling
