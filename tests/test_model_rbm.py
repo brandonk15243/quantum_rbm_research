@@ -62,51 +62,6 @@ class TestModelRBM(unittest.TestCase):
         test_RBM.gibbs_sample_probability(init, steps=60000)
 
 
-
-    # def test_collect_statistics(self):
-    #     """
-    #     Test that collect_statistics returns expected distribution
-    #     """
-    #     num_vis, num_hid = 2, 2
-    #     test_RBM = RBM(num_vis, num_hid, k=25, alpha=2)
-    #     epochs = 50
-    #     target = torch.Tensor([1,1])
-    #     """
-    #     for ep in range(epochs):
-    #         test_RBM.cdk(target)
-    #     """
-    #     W = torch.Tensor([[1,1],[1,1]])
-    #     zero = torch.zeros(2)
-    #     test_RBM.set_vis_bias(zero)
-    #     test_RBM.set_hid_bias(zero)
-    #     test_RBM.set_weights(W)
-    #     check = test_RBM.gibbs_sampling(
-    #         torch.randn(num_vis),
-    #         samples=2000
-    #         )
-    #     print(check)
-    #     return
-
-    #     # Vis node config with highest proportion should match target
-    #     # and store in new tensor
-    #     vis_dist = torch.empty((2**num_vis, num_vis+1))
-    #     # First, group by visible configs
-    #     vis_configs = utils.combinations(num_vis)
-    #     for i, vis_config in enumerate(vis_configs):
-    #         # Get mask to group by
-    #         mask = (check[:,:num_vis]==vis_config).all(dim=1)
-    #         # Get sum of grouped
-    #         prop = check[mask, -1].sum()
-    #         # Remove all rows
-    #         check = check[~mask]
-    #         # Create new row with aggregated sum
-    #         vis_dist[i, :num_vis] = vis_config
-    #         vis_dist[i, -1] = prop
-
-    #     # Vis node config with highest proportion should match target
-    #     max_ind = (vis_dist[:,-1]==torch.max(vis_dist[:,-1])).nonzero()[0][0]
-    #     torch.testing.assert_close(vis_dist[max_ind,:num_vis], target)
-
     def test_energy(self):
         """
         Test that energy function works as intended on simple model
@@ -167,39 +122,6 @@ class TestModelRBM(unittest.TestCase):
         # check equality
         torch.testing.assert_close(actual_dist_tensor, calculated_dist_tensor)
 
-    def test_distribution_cdk(self):
-        """
-        Test that sampled (by cdk) distribution follows the boltzmann distribution
-        """
-        num_vis, num_hid = 2,2
-        W = torch.Tensor([[2,3],[0,1]])
-        zero = torch.zeros(2)
-        test_RBM = RBM(num_vis, num_hid)
-        test_RBM.set_weights(W)
-        test_RBM.set_vis_bias(zero)
-        test_RBM.set_hid_bias(zero)
-
-        boltzmann = test_RBM.get_boltzmann_distribution()
-
-        N = num_vis+num_hid
-        sampled_dist = torch.cat((utils.combinations(N),torch.zeros((2**N,1))), dim=1)
-
-        # get sampled distribution
-        vis_initial = torch.randn(num_vis)
-        hid_initial = torch.randn(num_hid)
-        samples = 1000
-        for _ in range(samples):
-            sampled = test_RBM.sample_cdk(vis_initial, hid_initial, k=5)
-            mask = (sampled_dist[:,:N]==sampled).all(dim=1)
-            sampled_dist[mask,-1] += 1
-
-        sampled_dist[:,-1] /= samples
-
-        plt.bar(np.arange(0,2**N),sampled_dist[:,-1], label='Sampled')
-        plt.bar(np.arange(0,2**N)+0.5,boltzmann[:,-1], label='Boltzmann')
-        plt.legend()
-        plt.show()
-
     def test_distribution_gibbs(self):
         """
         Test that sampled (by gibbs) distribution follows the boltzmann distribution
@@ -218,19 +140,19 @@ class TestModelRBM(unittest.TestCase):
         sampled_dist = torch.cat((utils.combinations(N),torch.zeros((2**N,1))), dim=1)
 
         # get sampled distribution
-        samples = 1000
+        samples = 10000
         for _ in range(samples):
-            rand = torch.randn(num_vis)
+            rand = torch.randint(1,(num_vis,)).float()
             sampled = test_RBM.sample_gibbs(rand, steps=5)
             mask = (sampled_dist[:,:N]==sampled).all(dim=1)
             sampled_dist[mask,-1] += 1
 
         sampled_dist[:,-1] /= samples
 
-        plt.bar(np.arange(0,2**N),sampled_dist[:,-1], label='Sampled')
-        plt.bar(np.arange(0,2**N)+0.5,boltzmann[:,-1], label='Boltzmann')
-        plt.legend()
-        plt.show()
+        print(sampled_dist[:,-1]-boltzmann[:,-1])
+
+        torch.testing.assert_close(boltzmann[:,-1],sampled_dist[:,-1])
+
 
 if __name__=="__main__":
     unittest.main()

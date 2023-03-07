@@ -237,27 +237,6 @@ class RBM():
         self.error = torch.sum((input_data - vis_prob)**2)
         return self.error
 
-    def sample_cdk(self, vis_initial, hid_initial, k=10):
-        """
-        Description: Sample visible and hidden nodes (discrete) by CDK
-        Parmeters:
-            k (int): steps
-        Returns:
-            configuration (Tensor): final configuration of vis and hid nodes
-        """
-        vis = vis_initial
-        hid = hid_initial
-
-        # begin k steps
-        for _ in range(k):
-            vis = self.sample_v(hid)
-            hid = self.sample_h(vis)
-
-        # return config
-
-        return torch.cat((vis,hid))
-
-
     def sample_gibbs(self, vis_initial, steps=10):
         """
         Description: Sample visible and hidden nodes (discrete) by gibbs sampling
@@ -276,48 +255,6 @@ class RBM():
 
         gibbs_sample = torch.cat((v, h))
         return gibbs_sample
-
-    # def collect_statistics(self, vis_initial, samples=10):
-    #     """
-    #     Description: Alternatively sample repeatedly from visible and hidden
-    #     nodes and collect the frequency
-    #     Parameters:
-    #         vis_initial (Tensor): initial values to begin sampling
-    #         samples (int): number of gibbs steps to perform
-    #         mode (str): which nodes (visible, hidden) to return
-    #     Returns:
-    #         dist_tensor (Tensor): distribution (last column = proportions)
-    #     """
-
-    #     # dist_tensor: (2^N x N+1)
-    #     #   dist_tensor[:, :N] = node configuration (visible then hidden)
-    #     #   dist_tensor[:, -1] = proportion of samples with configuration of row
-    #     N = self.num_vis + self.num_hid
-    #     dist_tensor = torch.cat(
-    #         (utils.combinations(N), torch.zeros((2**N,1))),
-    #         dim=1
-    #         )
-
-    #     for i in range(samples):
-    #         # Get config of vis and hid nodes
-    #         if i==0:
-    #             hid_bin = self.sample_h(vis_initial)
-    #         else:
-    #             hid_bin = self.sample_h(vis_bin)
-    #         vis_bin = self.sample_v(hid_bin)
-
-    #         # Concatenate into 1 tensor (row vector)
-    #         config = torch.cat((vis_bin, hid_bin), dim=0)
-
-    #         # Get mask of matching column
-    #         mask = (dist_tensor[:,:N]==config).all(dim=1)
-
-    #         # Add to count
-    #         dist_tensor[mask, -1] += 1
-
-    #     # Divide by sample size
-    #     dist_tensor[:,-1] /= samples
-    #     return dist_tensor
 
 
 # eqn. 21
