@@ -167,7 +167,70 @@ class TestModelRBM(unittest.TestCase):
         # check equality
         torch.testing.assert_close(actual_dist_tensor, calculated_dist_tensor)
 
+    def test_distribution_cdk(self):
+        """
+        Test that sampled (by cdk) distribution follows the boltzmann distribution
+        """
+        num_vis, num_hid = 2,2
+        W = torch.Tensor([[2,3],[0,1]])
+        zero = torch.zeros(2)
+        test_RBM = RBM(num_vis, num_hid)
+        test_RBM.set_weights(W)
+        test_RBM.set_vis_bias(zero)
+        test_RBM.set_hid_bias(zero)
 
+        boltzmann = test_RBM.get_boltzmann_distribution()
+
+        N = num_vis+num_hid
+        sampled_dist = torch.cat((utils.combinations(N),torch.zeros((2**N,1))), dim=1)
+
+        # get sampled distribution
+        vis_initial = torch.randn(num_vis)
+        hid_initial = torch.randn(num_hid)
+        samples = 1000
+        for _ in range(samples):
+            sampled = test_RBM.sample_cdk(vis_initial, hid_initial, k=5)
+            mask = (sampled_dist[:,:N]==sampled).all(dim=1)
+            sampled_dist[mask,-1] += 1
+
+        sampled_dist[:,-1] /= samples
+
+        plt.bar(np.arange(0,2**N),sampled_dist[:,-1], label='Sampled')
+        plt.bar(np.arange(0,2**N)+0.5,boltzmann[:,-1], label='Boltzmann')
+        plt.legend()
+        plt.show()
+
+    def test_distribution_gibbs(self):
+        """
+        Test that sampled (by gibbs) distribution follows the boltzmann distribution
+        """
+        num_vis, num_hid = 2,2
+        W = torch.Tensor([[2,3],[0,1]])
+        zero = torch.zeros(2)
+        test_RBM = RBM(num_vis, num_hid)
+        test_RBM.set_weights(W)
+        test_RBM.set_vis_bias(zero)
+        test_RBM.set_hid_bias(zero)
+
+        boltzmann = test_RBM.get_boltzmann_distribution()
+
+        N = num_vis+num_hid
+        sampled_dist = torch.cat((utils.combinations(N),torch.zeros((2**N,1))), dim=1)
+
+        # get sampled distribution
+        samples = 1000
+        for _ in range(samples):
+            rand = torch.randn(num_vis)
+            sampled = test_RBM.sample_gibbs(rand, steps=5)
+            mask = (sampled_dist[:,:N]==sampled).all(dim=1)
+            sampled_dist[mask,-1] += 1
+
+        sampled_dist[:,-1] /= samples
+
+        plt.bar(np.arange(0,2**N),sampled_dist[:,-1], label='Sampled')
+        plt.bar(np.arange(0,2**N)+0.5,boltzmann[:,-1], label='Boltzmann')
+        plt.legend()
+        plt.show()
 
 if __name__=="__main__":
     unittest.main()
