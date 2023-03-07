@@ -110,47 +110,6 @@ class RBM():
 
         return vis_bin
 
-    def learn(self, input_data):
-        """
-        Description: Train model using contrastive divergence where
-        parameter k=self.k
-        Parameters:
-            input_data (Tensor): data to train model towards
-        Returns:
-            self.error (Tensor): squared error after training
-        """
-        # First forward pass
-        # Collect positive statistic <p_ip_j>_{data}
-        pos_hid_prob = self.prob_h_given_v(input_data)
-        pos_hid_bin = self.sample_h(input_data)
-        pos_stat = torch.outer(input_data, pos_hid_prob)
-
-        # Contrastive Divergence k-times
-        # "Reconstruction"
-        hid_bin = pos_hid_bin
-        for i in range(self.k):
-            # Use hidden binary vals when getting visible prob.
-            vis_prob = self.prob_v_given_h(hid_bin)
-            hid_bin = self.sample_h(vis_prob)
-
-        # Last pass
-        # Collect negative statistic <p_ip_j>_{reconstructed}
-        hid_prob = self.prob_h_given_v(vis_prob)
-        neg_stat = torch.outer(vis_prob, hid_prob)
-
-        # Update weights
-        # (Hinton) When using mini-batches, divide by size of mini-batch
-        momentum = self.alpha / self.batch_size
-        self.W += momentum * (pos_stat- neg_stat)
-
-        # Update bias
-        self.vis_bias += momentum * torch.sum(input_data - vis_prob, dim=0)
-        self.hid_bias += momentum * torch.sum(pos_hid_prob - hid_prob, dim=0)
-
-        # Compute and report squared error
-        self.error = torch.sum((input_data - vis_prob)**2)
-        return self.error
-
     def gibbs_step(self, vis):
         """
         Description: Perform a gibbs step given visible values
@@ -162,25 +121,6 @@ class RBM():
         sampled_hid = self.sample_h(vis)
         sampled_vis = self.sample_v(sampled_hid)
         return sampled_vis, sampled_hid
-
-    def gibbs_sample_discrete(self, vis_initial, steps=10):
-        """
-        Description: Get discrete (binary) values of nodes by gibbs sampling
-        Parameters:
-            vis_initial (Tensor): initial visible node states
-            steps (int): number of gibbs steps to take
-        Returns:
-            gibbs_sample (Tensor): discrete values of RBM
-        """
-        for i in range(steps):
-            # Take gibbs step
-            if i==0:
-                v, h = self.gibbs_step(vis_initial)
-            else:
-                v, h = self.gibbs_step(v)
-
-        gibbs_sample = torch.cat((v, h))
-        return gibbs_sample
 
     def gibbs_sample_probability(self, vis_initial, steps=10):
         """
@@ -256,6 +196,87 @@ class RBM():
 
         return dist_tensor
 
+    def learn(self, input_data):
+        """
+        Description: Train model using contrastive divergence where
+        parameter k=self.k
+        Parameters:
+            input_data (Tensor): data to train model towards
+        Returns:
+            self.error (Tensor): squared error after training
+        """
+        # First forward pass
+        # Collect positive statistic <p_ip_j>_{data}
+        pos_hid_prob = self.prob_h_given_v(input_data)
+        pos_hid_bin = self.sample_h(input_data)
+        pos_stat = torch.outer(input_data, pos_hid_prob)
+
+        # Contrastive Divergence k-times
+        # "Reconstruction"
+        hid_bin = pos_hid_bin
+        for i in range(self.k):
+            # Use hidden binary vals when getting visible prob.
+            vis_prob = self.prob_v_given_h(hid_bin)
+            hid_bin = self.sample_h(vis_prob)
+
+        # Last pass
+        # Collect negative statistic <p_ip_j>_{reconstructed}
+        hid_prob = self.prob_h_given_v(vis_prob)
+        neg_stat = torch.outer(vis_prob, hid_prob)
+
+        # Update weights
+        # (Hinton) When using mini-batches, divide by size of mini-batch
+        momentum = self.alpha / self.batch_size
+        self.W += momentum * (pos_stat- neg_stat)
+
+        # Update bias
+        self.vis_bias += momentum * torch.sum(input_data - vis_prob, dim=0)
+        self.hid_bias += momentum * torch.sum(pos_hid_prob - hid_prob, dim=0)
+
+        # Compute and report squared error
+        self.error = torch.sum((input_data - vis_prob)**2)
+        return self.error
+
+    def sample_cdk(self, vis_initial, hid_initial, k=10):
+        """
+        Description: Sample visible and hidden nodes (discrete) by CDK
+        Parmeters:
+            k (int): steps
+        Returns:
+            configuration (Tensor): final configuration of vis and hid nodes
+        """
+        vis = vis_initial
+        hid = hid_initial
+
+        # begin k steps
+        for _ in range(k):
+            vis = self.sample_v(hid)
+            hid = self.sample_h(vis)
+
+        # return config
+
+        return torch.cat((vis,hid))
+
+
+    def sample_gibbs(self, vis_initial, steps=10):
+        """
+        Description: Sample visible and hidden nodes (discrete) by gibbs sampling
+        Parameters:
+            vis_initial (Tensor): initial visible node states
+            steps (int): number of gibbs steps to take
+        Returns:
+            gibbs_sample (Tensor): discrete values of RBM
+        """
+        for i in range(steps):
+            # Take gibbs step
+            if i==0:
+                v, h = self.gibbs_step(vis_initial)
+            else:
+                v, h = self.gibbs_step(v)
+
+        gibbs_sample = torch.cat((v, h))
+        return gibbs_sample
+
     # def collect_statistics(self, vis_initial, samples=10):
     #     """
     #     Description: Alternatively sample repeatedly from visible and hidden
@@ -297,12 +318,6 @@ class RBM():
     #     # Divide by sample size
     #     dist_tensor[:,-1] /= samples
     #     return dist_tensor
-
-    def _sigmoid(self, x):
-        return 1 / (1 + torch.exp(-x))
-
-    def _tanh(self, x):
-        return (torch.exp(x) - torch.exp(-x)) / (torch.exp(x) + torch.exp(-x))
 
 
 # eqn. 21
