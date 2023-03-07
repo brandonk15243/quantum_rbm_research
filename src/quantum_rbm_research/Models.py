@@ -122,29 +122,6 @@ class RBM():
         sampled_vis = self.sample_v(sampled_hid)
         return sampled_vis, sampled_hid
 
-    def gibbs_sample_probability(self, vis_initial, steps=10):
-        """
-        Description: Get probability of each node by gibbs sampling
-        Parameters:
-            vis_initial (Tensor): initial visible node states
-            steps (int): number of gibbs steps to take
-        Returns:
-            gibbs_sample (Tensor): probability values of RBM
-        """
-        start = time.time()
-        for i in range(steps):
-            # Take gibbs step
-            if i==0:
-                v, h = self.gibbs_step(vis_initial)
-            else:
-                v, h = self.gibbs_step(v)
-        end = time.time()
-        print(end-start)
-        prob_h = self.prob_h_given_v(v)
-        prob_v = self.prob_v_given_h(h)
-        gibbs_sample = torch.cat((prob_v, prob_h))
-        return gibbs_sample
-
     def energy(self, v, h):
         """
         Description: compute the energy of the RBM given vectors v and h
