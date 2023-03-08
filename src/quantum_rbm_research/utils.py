@@ -3,13 +3,36 @@ import torch
 
 # Pauli Matrices
 def sigma_x():
-    return np.array([[0,1],[1,0]])
+    return torch.Tensor([[0,1],[1,0]])
 
 def sigma_y():
-    return np.array([[0,1j],[1j,0]])
+    return torch.Tensor([[0,1j],[1j,0]])
 
 def sigma_z():
-    return np.array([[1,0],[0,-1]])
+    return torch.Tensor([[1,0],[0,-1]])
+
+def i2():
+    return torch.eye(2)
+
+def operator_at(operator, index, N):
+    """
+    Description: Returns the tensor product of 2x2 identity matrices and
+    the given operator at the appropriate index
+    ***NOTE: this function is 1-indexed***
+    Parameters:
+        operator (Tensor): operator acting on site [index]
+        index (int): index of site (1-indexed!)
+        N (int): number of sites
+    Returns:
+        op (Tensor): tensor product with operator acting on site
+    """
+    op = torch.eye(1)
+    for i in range(N):
+        if i == index-1:
+            op = torch.kron(op, operator)
+        else:
+            op = torch.kron(op, i2())
+    return op
 
 def combinations(N):
     """

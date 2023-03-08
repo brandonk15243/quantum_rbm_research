@@ -14,6 +14,32 @@ class TestUtils(unittest.TestCase):
         # Assert appropriate length
         self.assertTrue(comb.size()==(2**N,N))
 
+    def test_operator_at(self):
+        # Number of particles
+        N = 2
+
+        # Params
+        op = utils.sigma_x()
+
+        # Calculate spin operator at index
+        spinx_at_1 = utils.operator_at(op, 1, N)
+        spinx_at_2 = utils.operator_at(op, 2, N)
+
+        # Correct answers
+        spinx_at_1_answer = torch.Tensor([
+            [0,0,1,0],
+            [0,0,0,1],
+            [1,0,0,0],
+            [0,1,0,0]])
+
+        spinx_at_2_answer = torch.Tensor([
+            [0,1,0,0],
+            [1,0,0,0],
+            [0,0,0,1],
+            [0,0,1,0]])
+
+        torch.testing.assert_close(spinx_at_1,spinx_at_1_answer)
+        torch.testing.assert_close(spinx_at_2,spinx_at_2_answer)
 
 
 if __name__=="__main__":

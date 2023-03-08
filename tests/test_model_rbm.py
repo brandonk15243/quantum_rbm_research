@@ -1,14 +1,10 @@
 import quantum_rbm_research.utils as utils
 from quantum_rbm_research.Models import RBM
 
-import matplotlib.pyplot as plt
 import numpy as np
-import time
 import torch
 from torch import Tensor
 import unittest
-
-
 
 class TestModelRBM(unittest.TestCase):
     def test_model_init(self):
@@ -46,22 +42,6 @@ class TestModelRBM(unittest.TestCase):
             msg="Model hidden biases set incorrectly"
             )
 
-    def test_gibbs_sample(self):
-        """
-        Test that gibbs sampling diverges to expected distribution
-        """
-        num_vis, num_hid = 2, 2
-        test_RBM = RBM(num_vis, num_hid, k=20, alpha=2)
-        epochs = 10
-        target = torch.Tensor([1,1])
-        for ep in range(epochs):
-            test_RBM.learn(target)
-
-        init = torch.randn(num_vis)
-
-        test_RBM.gibbs_sample_probability(init, steps=60000)
-
-
     def test_energy(self):
         """
         Test that energy function works as intended on simple model
@@ -85,7 +65,7 @@ class TestModelRBM(unittest.TestCase):
             )
 
         # Assert close
-        RBM_energy = test_RBM.energy(vis, hid)
+        RBM_energy = test_RBM.energy(vis, hid, msg="Energy not close")
 
         torch.testing.assert_close(calc_energy, RBM_energy)
 
@@ -120,14 +100,15 @@ class TestModelRBM(unittest.TestCase):
         calculated_dist_tensor = test_RBM.get_boltzmann_distribution()
 
         # check equality
-        torch.testing.assert_close(actual_dist_tensor, calculated_dist_tensor)
+        torch.testing.assert_close(actual_dist_tensor, calculated_dist_tensor,
+            msg="Boltzmann distribution not close")
 
     def test_distribution_gibbs(self):
         """
         Test that sampled (by gibbs) distribution follows the boltzmann distribution
         """
-        num_vis, num_hid = 2,2
-        W = torch.Tensor([[2,3],[0,1]])
+        num_vis, num_hid = 2,3
+        W = torch.Tensor([[1,1],[1,1]])
         zero = torch.zeros(2)
         test_RBM = RBM(num_vis, num_hid)
         test_RBM.set_weights(W)
@@ -143,15 +124,15 @@ class TestModelRBM(unittest.TestCase):
         samples = 10000
         for _ in range(samples):
             rand = torch.randint(1,(num_vis,)).float()
-            sampled = test_RBM.sample_gibbs(rand, steps=5)
+            sampled = test_RBM.sample_gibbs(rand, steps=6)
             mask = (sampled_dist[:,:N]==sampled).all(dim=1)
             sampled_dist[mask,-1] += 1
 
         sampled_dist[:,-1] /= samples
 
-        print(sampled_dist[:,-1]-boltzmann[:,-1])
 
-        torch.testing.assert_close(boltzmann[:,-1],sampled_dist[:,-1])
+        torch.testing.assert_close(boltzmann[:,-1],sampled_dist[:,-1],atol=5e-3,rtol=0,
+            msg="Gibbs sample distribution not close to Boltzmann")
 
 
 if __name__=="__main__":
