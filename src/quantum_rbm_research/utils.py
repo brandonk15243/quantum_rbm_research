@@ -18,17 +18,16 @@ def operator_at(operator, index, N):
     """
     Description: Returns the tensor product of 2x2 identity matrices and
     the given operator at the appropriate index
-    ***NOTE: this function is 1-indexed***
     Parameters:
         operator (Tensor): operator acting on site [index]
-        index (int): index of site (1-indexed!)
+        index (int): index of site
         N (int): number of sites
     Returns:
         op (Tensor): tensor product with operator acting on site
     """
     op = torch.eye(1)
     for i in range(N):
-        if i == index-1:
+        if i == index:
             op = torch.kron(op, operator)
         else:
             op = torch.kron(op, i2())

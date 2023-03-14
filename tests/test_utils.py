@@ -22,24 +22,24 @@ class TestUtils(unittest.TestCase):
         op = utils.sigma_x()
 
         # Calculate spin operator at index
+        spinx_at_0 = utils.operator_at(op, 0, N)
         spinx_at_1 = utils.operator_at(op, 1, N)
-        spinx_at_2 = utils.operator_at(op, 2, N)
 
         # Correct answers
-        spinx_at_1_answer = torch.Tensor([
+        spinx_at_0_answer = torch.Tensor([
             [0,0,1,0],
             [0,0,0,1],
             [1,0,0,0],
             [0,1,0,0]])
 
-        spinx_at_2_answer = torch.Tensor([
+        spinx_at_1_answer = torch.Tensor([
             [0,1,0,0],
             [1,0,0,0],
             [0,0,0,1],
             [0,0,1,0]])
 
+        torch.testing.assert_close(spinx_at_0,spinx_at_0_answer)
         torch.testing.assert_close(spinx_at_1,spinx_at_1_answer)
-        torch.testing.assert_close(spinx_at_2,spinx_at_2_answer)
 
 
 if __name__=="__main__":
