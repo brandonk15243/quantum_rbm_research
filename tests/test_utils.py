@@ -44,7 +44,7 @@ class TestUtils(unittest.TestCase):
     def test_tfi_e0(self):
         J = 1
         h = 1
-        N = 3
+        N = 5
         print(utils.tfi_e0(J, h, N))
 
 

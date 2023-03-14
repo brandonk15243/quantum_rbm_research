@@ -4,6 +4,7 @@ from quantum_rbm_research.Models import RBM
 import numpy as np
 import torch
 from torch import Tensor
+import matplotlib.pyplot as plt
 import unittest
 
 class TestModelRBM(unittest.TestCase):
@@ -65,9 +66,9 @@ class TestModelRBM(unittest.TestCase):
             )
 
         # Assert close
-        RBM_energy = test_RBM.energy(vis, hid, msg="Energy not close")
+        RBM_energy = test_RBM.energy(vis, hid)
 
-        torch.testing.assert_close(calc_energy, RBM_energy)
+        torch.testing.assert_close(calc_energy, RBM_energy, msg="Energy not close")
 
     def test_get_boltzmann_distribution(self):
         """
@@ -107,8 +108,8 @@ class TestModelRBM(unittest.TestCase):
         """
         Test that sampled (by gibbs) distribution follows the boltzmann distribution
         """
-        num_vis, num_hid = 2,3
-        W = torch.Tensor([[1,1],[1,1]])
+        num_vis, num_hid = 2,2
+        W = torch.Tensor([[1,-1],[-1,1]])
         zero = torch.zeros(2)
         test_RBM = RBM(num_vis, num_hid)
         test_RBM.set_weights(W)

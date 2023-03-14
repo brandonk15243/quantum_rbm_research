@@ -5,6 +5,7 @@ import torch
 
 """
 Transverse Ising Hamiltonian with open boundary conditions
+# add periodic
 """
 
 class TransverseIsingHamiltonian():
@@ -16,12 +17,11 @@ class TransverseIsingHamiltonian():
 
         # Create matrix
         self.H = torch.zeros(2**self.N,2**self.N)
-        for i in range(1,self.N+1):
+        for i in range(0,self.N):
             # Interaction term
-            if i < self.N:
-                spinz_i = utils.operator_at(utils.sigma_z(), i, self.N)
-                spinz_j = utils.operator_at(utils.sigma_z(), i+1, self.N)
-                self.H += -self.J * spinz_i@spinz_j
+            spinz_i = utils.operator_at(utils.sigma_z(), i, self.N)
+            spinz_j = utils.operator_at(utils.sigma_z(), (i+1)%self.N, self.N)
+            self.H += -self.J * spinz_i@spinz_j
 
             # External field term
             spinx_i = utils.operator_at(utils.sigma_x(), i, self.N)

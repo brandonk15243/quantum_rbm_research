@@ -5,6 +5,11 @@ import time
 
 import quantum_rbm_research.utils as utils
 
+# Add 2D RBM with sampling and verification
+# make function that maps transverse ising weights to classical using
+# formulas
+# use paper and equation to convert BM to RBM by turning bonds into hidden neurons
+
 class RBM():
     def __init__(self, num_vis, num_hid, k=1, alpha=1e-3, batch_size=1):
         """
@@ -35,8 +40,13 @@ class RBM():
         Parameters:
             W (Tensor): input weight matrix
         """
-        if W.size()==self.W.size():
+        try:
+            if W.size()!=self.W.size():
+                raise ValueError('dimension error')
             self.W = W
+        except ValueError as err:
+            print("set_weights error: " + repr(err))
+
 
     def set_vis_bias(self, vis_bias):
         """
@@ -44,8 +54,13 @@ class RBM():
         Parameters:
             vis_bias (Tensor): input vis biases
         """
-        if vis_bias.size() == self.vis_bias.size():
+        try:
+            if vis_bias.size()!=self.vis_bias.size():
+                raise ValueError('dimension error')
             self.vis_bias = vis_bias
+        except ValueError as err:
+            print("set_vis_bias error: " + repr(err))
+
 
     def set_hid_bias(self, hid_bias):
         """
@@ -53,8 +68,13 @@ class RBM():
         Parameters:
             hid_bias (Tensor): input hid biases
         """
-        if hid_bias.size() == self.hid_bias.size():
+        try:
+            if hid_bias.size()!=self.hid_bias.size():
+                raise ValueError('dimension error')
             self.hid_bias = hid_bias
+        except ValueError as err:
+            print("set_hid_bias error: " + repr(err))
+
 
     def prob_h_given_v(self, vis):
         """
@@ -233,5 +253,20 @@ class RBM():
         gibbs_sample = torch.cat((v, h))
         return gibbs_sample
 
-
+class RBM2D():
+    def __init__(self, vis_dim, hid_dim, k=1, alpha=1e-3, batch_size=1):
+        """
+        This is a class for an RBM with 2D visible and hidden nodes.
+        Attributes:
+            num_vis (Tuple(int,int)): dimension of visible nodes
+            num_hid (Tuple(int,int)): dimension of hidden nodes
+            k (int): parameter for CD-k
+            alpha (float): learning rate
+            batch_size (int): batch size for batched learning
+        """
+        self.vis_dim = vis_dim
+        self.hid_dim = hid_dim
+        self.k = k
+        self.alpha = alpha
+        self.batch_size = batch_size
 # eqn. 21
