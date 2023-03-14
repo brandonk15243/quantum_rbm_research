@@ -43,3 +43,9 @@ def combinations(N):
     """
     binary = torch.Tensor([list(map(int,format(i, f'0{N}b'))) for i in range(2**N)])
     return binary
+
+def tfi_e0(J, h, N):
+    m = np.arange(-N/2,N/2+1,1)
+    q = 2*np.pi*m/N
+    omq = np.sqrt(1+2*h*np.cos(q)+h**2)
+    return np.sum(omq)

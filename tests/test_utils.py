@@ -41,6 +41,12 @@ class TestUtils(unittest.TestCase):
         torch.testing.assert_close(spinx_at_0,spinx_at_0_answer)
         torch.testing.assert_close(spinx_at_1,spinx_at_1_answer)
 
+    def test_tfi_e0(self):
+        J = 1
+        h = 1
+        N = 3
+        print(utils.tfi_e0(J, h, N))
+
 
 if __name__=="__main__":
     unittest.main()
