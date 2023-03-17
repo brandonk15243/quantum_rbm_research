@@ -10,7 +10,7 @@ $ pip install quantum_rbm_research
 
 ## Usage
 
-- TODO
+- Use RBM to calculate ground state energy/configuration of Quantum model (WIP)
 
 ## Contributing
 
