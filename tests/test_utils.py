@@ -9,10 +9,10 @@ class TestUtils(unittest.TestCase):
     def test_combinations(self):
         # Number of bits
         N = 4
-        comb = utils.combinations(N)
+        perm = utils.permutations(N)
 
         # Assert appropriate length
-        self.assertTrue(comb.size()==(2**N,N))
+        self.assertTrue(perm.size() == (2 ** N, N))
 
     def test_operator_at(self):
         # Number of particles
@@ -27,19 +27,19 @@ class TestUtils(unittest.TestCase):
 
         # Correct answers
         spinx_at_0_answer = torch.Tensor([
-            [0,0,1,0],
-            [0,0,0,1],
-            [1,0,0,0],
-            [0,1,0,0]])
+            [0, 0, 1, 0],
+            [0, 0, 0, 1],
+            [1, 0, 0, 0],
+            [0, 1, 0, 0]])
 
         spinx_at_1_answer = torch.Tensor([
-            [0,1,0,0],
-            [1,0,0,0],
-            [0,0,0,1],
-            [0,0,1,0]])
+            [0, 1, 0, 0],
+            [1, 0, 0, 0],
+            [0, 0, 0, 1],
+            [0, 0, 1, 0]])
 
-        torch.testing.assert_close(spinx_at_0,spinx_at_0_answer)
-        torch.testing.assert_close(spinx_at_1,spinx_at_1_answer)
+        torch.testing.assert_close(spinx_at_0, spinx_at_0_answer)
+        torch.testing.assert_close(spinx_at_1, spinx_at_1_answer)
 
     def test_tfi_e0(self):
         J = 1
@@ -48,5 +48,5 @@ class TestUtils(unittest.TestCase):
         print(utils.tfi_e0(J, h, N))
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     unittest.main()

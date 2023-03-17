@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 import torch.nn.functional as Func
-import time
 
 import quantum_rbm_research.utils as utils
 
@@ -9,6 +8,7 @@ import quantum_rbm_research.utils as utils
 # make function that maps transverse ising weights to classical using
 # formulas
 # use paper and equation to convert BM to RBM by turning bonds into hidden neurons
+
 
 class RBM():
     def __init__(self, num_vis, num_hid, k=1, alpha=1e-3, batch_size=1):
@@ -41,12 +41,11 @@ class RBM():
             W (Tensor): input weight matrix
         """
         try:
-            if W.size()!=self.W.size():
+            if W.size() != self.W.size():
                 raise ValueError('dimension error')
             self.W = W
         except ValueError as err:
             print("set_weights error: " + repr(err))
-
 
     def set_vis_bias(self, vis_bias):
         """
@@ -55,12 +54,11 @@ class RBM():
             vis_bias (Tensor): input vis biases
         """
         try:
-            if vis_bias.size()!=self.vis_bias.size():
+            if vis_bias.size() != self.vis_bias.size():
                 raise ValueError('dimension error')
             self.vis_bias = vis_bias
         except ValueError as err:
             print("set_vis_bias error: " + repr(err))
-
 
     def set_hid_bias(self, hid_bias):
         """
@@ -69,12 +67,11 @@ class RBM():
             hid_bias (Tensor): input hid biases
         """
         try:
-            if hid_bias.size()!=self.hid_bias.size():
+            if hid_bias.size() != self.hid_bias.size():
                 raise ValueError('dimension error')
             self.hid_bias = hid_bias
         except ValueError as err:
             print("set_hid_bias error: " + repr(err))
-
 
     def prob_h_given_v(self, vis):
         """
@@ -152,7 +149,10 @@ class RBM():
         Returns:
             energy of RBM
         """
-        energy = -(v.t()@self.W@h + v.t()@self.vis_bias + h.t()@self.hid_bias)
+        energy = -(v.t() @ self.W @ h
+                   + v.t() @ self.vis_bias
+                   + h.t() @ self.hid_bias
+                   )
         return energy
 
     def get_boltzmann_distribution(self):
@@ -160,36 +160,37 @@ class RBM():
         Description: get boltzmann distribution of RBM.
 
         Returns:
-            dist (Tensor):
+            dist (Tensor): Tensor where last column is probability
         """
 
         # dist_tensor: (2^N x N+1)
         #   dist_tensor[:, :N] = node configuration (visible then hidden)
-        #   dist_tensor[:, -1] = proportion of samples with configuration of row
+        #   dist_tensor[:, -1] = proportion of samples matching row
         N = self.num_hid + self.num_vis
-        dist_tensor = torch.cat((utils.combinations(N), torch.zeros((2**N,1))), dim=1)
+        perm = utils.permutations(N)
+        dist_tensor = torch.cat(perm, torch.zeros((2**N, 1)), dim=1)
 
         # Calculate all energy configurations in batch
         # vis (2^N x num_vis): each row is visible config
         # hid (2^N x num_hid): each row is hidden config
         # weight energy:
-        #  sum((vis@W)*hid, dim=1) (2^N x 1) = column where each row represents weight energy
-        #   v.t()@W@h
+        #  sum((vis@W)*hid, dim=1) (2^N x 1) = column where each row represents
+        #  weight energy v.t()@W@h
         # bias energy:
-        #   vis@vis_bias (2^N x 1) = column where each row represents bias energy
-        #   (same for hidden)
-        vis = dist_tensor[:,:self.num_vis]
-        hid = dist_tensor[:,self.num_vis:-1]
+        #   vis@vis_bias (2^N x 1) = column where each row represents bias
+        #   energy (same for hidden)
+        vis = dist_tensor[:, :self.num_vis]
+        hid = dist_tensor[:, self.num_vis:-1]
 
-        energy = -(
-            torch.sum(vis@self.W*hid,dim=1) +
-            vis@self.vis_bias.t() +
-            hid@self.hid_bias.t()
-            )
+        energy = -(torch.sum(
+            vis @ self.W * hid, dim=1)
+            + vis @ self.vis_bias.t()
+            + hid @ self.hid_bias.t()
+        )
 
-        dist_tensor[:,-1] = torch.exp(-energy)
-        partition = torch.sum(dist_tensor[:,-1])
-        dist_tensor[:,-1] /= partition
+        dist_tensor[:, -1] = torch.exp(-energy)
+        partition = torch.sum(dist_tensor[:, -1])
+        dist_tensor[:, -1] /= partition
 
         return dist_tensor
 
@@ -224,7 +225,7 @@ class RBM():
         # Update weights
         # (Hinton) When using mini-batches, divide by size of mini-batch
         momentum = self.alpha / self.batch_size
-        self.W += momentum * (pos_stat- neg_stat)
+        self.W += momentum * (pos_stat - neg_stat)
 
         # Update bias
         self.vis_bias += momentum * torch.sum(input_data - vis_prob, dim=0)
@@ -236,7 +237,8 @@ class RBM():
 
     def sample_gibbs(self, vis_initial, steps=10):
         """
-        Description: Sample visible and hidden nodes (discrete) by gibbs sampling
+        Description: Sample visible and hidden nodes (discrete) by gibbs
+        sampling
         Parameters:
             vis_initial (Tensor): initial visible node states
             steps (int): number of gibbs steps to take
@@ -245,13 +247,14 @@ class RBM():
         """
         for i in range(steps):
             # Take gibbs step
-            if i==0:
+            if i == 0:
                 v, h = self.gibbs_step(vis_initial)
             else:
                 v, h = self.gibbs_step(v)
 
         gibbs_sample = torch.cat((v, h))
         return gibbs_sample
+
 
 class RBM2D():
     def __init__(self, vis_dim, hid_dim, k=1, alpha=1e-3, batch_size=1):
