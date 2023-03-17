@@ -21,6 +21,7 @@ class RBM():
             alpha (float): learning rate
             batch_size (int): batch size for batched learning
         """
+
         # Params
         self.num_vis = num_vis
         self.num_hid = num_hid
@@ -40,6 +41,7 @@ class RBM():
         Parameters:
             W (Tensor): input weight matrix
         """
+
         try:
             if W.size() != self.W.size():
                 raise ValueError('dimension error')
@@ -53,6 +55,7 @@ class RBM():
         Parameters:
             vis_bias (Tensor): input vis biases
         """
+
         try:
             if vis_bias.size() != self.vis_bias.size():
                 raise ValueError('dimension error')
@@ -66,6 +69,7 @@ class RBM():
         Parameters:
             hid_bias (Tensor): input hid biases
         """
+
         try:
             if hid_bias.size() != self.hid_bias.size():
                 raise ValueError('dimension error')
@@ -135,6 +139,7 @@ class RBM():
         Returns:
             sampled_vis (Tensor): sampled visible values
         """
+
         sampled_hid = self.sample_h(vis)
         sampled_vis = self.sample_v(sampled_hid)
         return sampled_vis, sampled_hid
@@ -149,6 +154,7 @@ class RBM():
         Returns:
             energy of RBM
         """
+
         energy = -(v.t() @ self.W @ h
                    + v.t() @ self.vis_bias
                    + h.t() @ self.hid_bias
@@ -160,15 +166,17 @@ class RBM():
         Description: get boltzmann distribution of RBM.
 
         Returns:
-            dist (Tensor): Tensor where last column is probability
+            boltzmann_dist (Tensor): (2^N x N+1) Tensor, where
+                boltzmann_dist[:, :self.num_vis] = vis node configuration
+                boltzmann_dist[:, self.num_vis:-1] = hid node configuration
+                boltzmann_dist[:, -1] = probability
         """
 
-        # dist_tensor: (2^N x N+1)
-        #   dist_tensor[:, :N] = node configuration (visible then hidden)
-        #   dist_tensor[:, -1] = proportion of samples matching row
         N = self.num_hid + self.num_vis
-        perm = utils.permutations(N)
-        dist_tensor = torch.cat(perm, torch.zeros((2**N, 1)), dim=1)
+        boltzmann_dist = torch.cat(
+            (utils.permutations(N), torch.zeros((2**N, 1))),
+            dim=1
+        )
 
         # Calculate all energy configurations in batch
         # vis (2^N x num_vis): each row is visible config
@@ -179,8 +187,8 @@ class RBM():
         # bias energy:
         #   vis@vis_bias (2^N x 1) = column where each row represents bias
         #   energy (same for hidden)
-        vis = dist_tensor[:, :self.num_vis]
-        hid = dist_tensor[:, self.num_vis:-1]
+        vis = boltzmann_dist[:, :self.num_vis]
+        hid = boltzmann_dist[:, self.num_vis:-1]
 
         energy = -(torch.sum(
             vis @ self.W * hid, dim=1)
@@ -188,11 +196,63 @@ class RBM():
             + hid @ self.hid_bias.t()
         )
 
-        dist_tensor[:, -1] = torch.exp(-energy)
-        partition = torch.sum(dist_tensor[:, -1])
-        dist_tensor[:, -1] /= partition
+        boltzmann_dist[:, -1] = torch.exp(-energy)
+        partition = torch.sum(boltzmann_dist[:, -1])
+        boltzmann_dist[:, -1] /= partition
 
-        return dist_tensor
+        return boltzmann_dist
+
+    def sample_gibbs(self, vis_initial, steps=10):
+        """
+        Description: Sample visible and hidden nodes (discrete) by gibbs
+        sampling
+        Parameters:
+            vis_initial (Tensor): initial visible node states
+            steps (int): number of gibbs steps to take
+        Returns:
+            gibbs_sample (Tensor): discrete values of RBM
+        """
+
+        for i in range(steps):
+            # Take gibbs step
+            if i == 0:
+                v, h = self.gibbs_step(vis_initial)
+            else:
+                v, h = self.gibbs_step(v)
+
+        gibbs_sample = torch.cat((v, h))
+        return gibbs_sample
+
+    def get_gibbs_distribution(self, steps=10, samples=10000):
+        """
+        Description: run sample_gibbs [samples] times to generate a
+        distribution
+        Parmeters:
+            vis_initial (Tensor): initial visible node states
+            steps (int): number of gibbs steps to take
+            samples (int): number of times to run sample_gibbs
+        Returns:
+            gibbs_dist (Tensor): (see get_boltzmann_distribution
+            return description)
+        """
+
+        N = self.num_vis + self.num_hid
+        gibbs_dist = torch.cat(
+            (utils.permutations(N), torch.zeros((2**N, 1))),
+            dim=1
+        )
+
+        # run samples, last column is count
+        for i in range(samples):
+            vis_init = torch.randint(1, (self.num_vis,)).float()
+            sample = self.sample_gibbs(vis_init, steps=steps)
+            mask = (gibbs_dist[:, :N] == sample).all(dim=1)
+            gibbs_dist[mask, -1] += 1
+
+        # last column count -> proportion
+        gibbs_dist[:, -1] /= samples
+
+        return gibbs_dist
 
     def learn(self, input_data):
         """
@@ -203,6 +263,7 @@ class RBM():
         Returns:
             self.error (Tensor): squared error after training
         """
+
         # First forward pass
         # Collect positive statistic <p_ip_j>_{data}
         pos_hid_prob = self.prob_h_given_v(input_data)
@@ -235,26 +296,6 @@ class RBM():
         self.error = torch.sum((input_data - vis_prob)**2)
         return self.error
 
-    def sample_gibbs(self, vis_initial, steps=10):
-        """
-        Description: Sample visible and hidden nodes (discrete) by gibbs
-        sampling
-        Parameters:
-            vis_initial (Tensor): initial visible node states
-            steps (int): number of gibbs steps to take
-        Returns:
-            gibbs_sample (Tensor): discrete values of RBM
-        """
-        for i in range(steps):
-            # Take gibbs step
-            if i == 0:
-                v, h = self.gibbs_step(vis_initial)
-            else:
-                v, h = self.gibbs_step(v)
-
-        gibbs_sample = torch.cat((v, h))
-        return gibbs_sample
-
 
 class RBM2D():
     def __init__(self, vis_dim, hid_dim, k=1, alpha=1e-3, batch_size=1):
@@ -267,6 +308,7 @@ class RBM2D():
             alpha (float): learning rate
             batch_size (int): batch size for batched learning
         """
+
         self.vis_dim = vis_dim
         self.hid_dim = hid_dim
         self.k = k

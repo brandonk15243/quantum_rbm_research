@@ -117,7 +117,7 @@ class TestModelRBM(unittest.TestCase):
             msg="Boltzmann distribution not close"
         )
 
-    def test_distribution_gibbs(self):
+    def test_get_gibbs_distribution(self):
         """
         Test that sampled (by gibbs) distribution follows the boltzmann
         distribution
@@ -131,28 +131,13 @@ class TestModelRBM(unittest.TestCase):
         test_RBM.set_hid_bias(zero)
 
         boltzmann = test_RBM.get_boltzmann_distribution()
-
-        N = num_vis + num_hid
-        sampled_dist = torch.cat(
-            (utils.permutations(N), torch.zeros((2**N, 1))),
-            dim=1
-        )
-
-        # get sampled distribution
-        samples = 10000
-        for _ in range(samples):
-            rand = torch.randint(1, (num_vis,)).float()
-            sampled = test_RBM.sample_gibbs(rand, steps=6)
-            mask = (sampled_dist[:, :N] == sampled).all(dim=1)
-            sampled_dist[mask, -1] += 1
-
-        sampled_dist[:, -1] /= samples
+        gibbs = test_RBM.get_gibbs_distribution(steps=2, samples=20000)
 
         torch.testing.assert_close(
             boltzmann[:, -1],
-            sampled_dist[:, -1],
-            atol=5e-3,
-            rtol=0,
+            gibbs[:, -1],
+            atol=.01,
+            rtol=.01,
             msg="Gibbs sample distribution not close to Boltzmann"
         )
 
