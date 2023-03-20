@@ -28,7 +28,6 @@ gibbs = RBM.get_gibbs_distribution()
 dfdist = utils.permutations_df(num_vis, num_hid)
 dfdist['boltz'] = boltzmann[:, -1]
 dfdist['gibbs'] = gibbs[:, -1]
-dfdist['full'] = dfdist['vis'].str.cat(dfdist['hid'], sep=',')
 
 # Generate bar plot
 figfull, axfull = plt.subplots()
