@@ -69,9 +69,10 @@ def tfi_e0(N, J, h):
     omega_q = np.sqrt(1 + 2 * lam * np.cos(q) + lam ** 2)
 
     # I noticed that for h > J, the returned value was off by a factor of
-    # J / h from the minimum eigenvalue, which is why I added the second term.
+    # h from the minimum eigenvalue, which is why I added the second term.
     # THIS MAY BE WRONG IF MY HAMILTONIAN MATRIX IS WRONG (MIN. EIGENVAL WRONG)
-    return -np.sum(omega_q) * np.max([1 / lam, 1])
+    return -np.sum(omega_q) * np.max([h, 1])
+
 
 ########################################
 # MISC utils
@@ -103,6 +104,7 @@ def permutations_df(num_vis, num_hid):
         binary (DataFrame): 2^N x 2 DF
             first column = vis config
             second column = hid config
+            third column = full config
     """
     vis_col_int = np.arange(0, 2 ** (num_vis + num_hid)) // 2 ** num_hid
     hid_col_int = np.tile(np.arange(0, 2 ** num_hid), 2 ** num_vis)
@@ -114,6 +116,7 @@ def permutations_df(num_vis, num_hid):
     binary['hid'] = binary['hid'].apply(
         lambda num: format(num, f'0{num_hid}b')
     )
+    binary['full'] = binary['vis'].str.cat(binary['hid'], sep=',')
 
     return binary
 
@@ -133,3 +136,4 @@ def tensordist_to_dfdist(dist, num_vis, num_hid):
     dfdist = permutations_df(num_vis, num_hid)
     dfdist['prob'] = dist[:, -1]
     return dfdist
+
