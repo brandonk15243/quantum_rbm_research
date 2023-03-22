@@ -1,5 +1,6 @@
 import quantum_rbm_research.utils as utils
 from quantum_rbm_research.Models import RBM
+from vis_funcs import *
 
 import matplotlib.pyplot as plt
 import os
@@ -44,7 +45,9 @@ axfull.set_ylabel("Probability")
 axfull.grid()
 
 # Save Fig
-figfull = axfull.get_figure()
 figfull.set_size_inches(10, 6)
 figfull.set_layout_engine('tight')
-figfull.savefig(os.path.join(figs_folder, 'dist_comparison_full.png'))
+# figfull.savefig(os.path.join(figs_folder, 'dist_comparison_full.png'))
+
+# Grouped by visual nodes
+plot_groupby_vis(dfdist)

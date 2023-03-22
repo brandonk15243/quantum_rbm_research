@@ -13,19 +13,19 @@ class TestUtils(unittest.TestCase):
         perm = utils.permutations(N)
 
         # Assert appropriate length
-        self.assertTrue(perm.size() == (2 ** N, N))
+        self.assertTrue(perm.size() == (2**N, N))
 
     def test_permutations_df(self):
         num_vis, num_hid = 3, 2
         perm = utils.permutations_df(num_vis, num_hid)
 
         self.assertTrue(
-            perm['vis'].unique().size == 2 ** num_vis,
+            perm['vis'].unique().size == 2**num_vis,
             msg="Unique visible permutation size incorrect"
         )
 
         self.assertTrue(
-            perm['hid'].unique().size == 2 ** num_hid,
+            perm['hid'].unique().size == 2**num_hid,
             msg="Unique hidden permutation size incorrect"
         )
 
@@ -53,8 +53,35 @@ class TestUtils(unittest.TestCase):
             [0, 0, 0, 1],
             [0, 0, 1, 0]])
 
-        torch.testing.assert_close(spinx_at_0, spinx_at_0_answer)
-        torch.testing.assert_close(spinx_at_1, spinx_at_1_answer)
+        torch.testing.assert_close(
+            spinx_at_0,
+            spinx_at_0_answer,
+            msg="spinx_at_0 incorrect"
+        )
+        torch.testing.assert_close(
+            spinx_at_1,
+            spinx_at_1_answer,
+            msg="spinx_at_1 incorrect"
+        )
+
+    def test_exp_op(self):
+        # Test operator
+        test_op = torch.Tensor([[1, 2], [2, -1]])
+
+        # Expected operator exponential using formula
+        exp_op_expected = torch.Tensor([
+            [16 / 3, 11 / 3],
+            [11 / 3, 5 / 3]
+        ])
+
+        # Calculated operator exponential using utils func
+        exp_op_calculated = utils.exp_op(test_op, 3)
+
+        torch.testing.assert_close(
+            exp_op_expected,
+            exp_op_calculated,
+            msg="Exponential of operator incorrect"
+        )
 
 
 if __name__ == "__main__":

@@ -141,6 +141,9 @@ class TestModelRBM(unittest.TestCase):
             msg="Gibbs sample distribution not close to Boltzmann"
         )
 
+    def test(self):
+
+
 
 if __name__ == "__main__":
     unittest.main()
