@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import pandas as pd
 import torch
@@ -45,6 +46,31 @@ def operator_at(operator, index, N):
     return op
 
 
+def exp_op(op, K):
+    """
+    Description: calculate exponential of operator (matrix) using Taylor
+    expansion
+    Parameters:
+        op (Tensor): operator to exponentiate
+        K (int): number of terms to sum to (upper limit of sum)
+    Returns:
+        exp_op (Tensor): exponential of operator
+    """
+    exp_op = torch.zeros(op.size())
+
+    # For n == 0, op^0 = Identity
+    op_to_n = torch.eye(op.size()[0])
+
+    for n in range(K + 1):
+        # Add to sum: (op)^n/n!
+        exp_op += op_to_n / (math.factorial(n))
+
+        # Raise power of operator
+        op_to_n = op_to_n @ op
+
+    return exp_op
+
+
 def tfi_e0(N, J, h):
     """
     Description: calculate (analytically) the ground state energy for the given
@@ -66,13 +92,85 @@ def tfi_e0(N, J, h):
     lam = J / h
 
     # w_q (pg. 20)
-    omega_q = np.sqrt(1 + 2 * lam * np.cos(q) + lam ** 2)
+    omega_q = np.sqrt(1 + 2 * lam * np.cos(q) + lam**2)
 
     # I noticed that for h > J, the returned value was off by a factor of
     # h from the minimum eigenvalue, which is why I added the second term.
     # THIS MAY BE WRONG IF MY HAMILTONIAN MATRIX IS WRONG (MIN. EIGENVAL WRONG)
     return -np.sum(omega_q) * np.max([h, 1])
 
+
+def twospin_e0(J, h, tau, n, initial_state=None):
+    """
+    Description: calculate ground state vector using conversion to Classical
+    lattice structure. Reference Appendix D in slides.
+    Parameters:
+        J (float): interaction factor
+        h (float): external field factor
+        tau (float): time propagation constant
+        n (int): size of new dimension
+        initial_state (Tensor): optional initial state
+    Returns:
+        gs (Tensor): ground state vector
+    """
+
+    # Arbitrary initial state
+    if initial_state is not None:
+        gs = initial_state
+    else:
+        gs = torch.rand(4)
+    # Normalize
+    gs /= np.linalg.norm(gs)
+
+    # Suzuki Trotter params
+    d_tau = tau / n
+
+    # Time evolution matrix (1 step)
+    matr = torch.zeros((4, 4))
+
+    for i_l in range(4):
+        # generate spin values sigma_1^l, sigma_2^l
+        s1l = 1 if i_l < 2 else -1
+        s2l = 1 if i_l % 2 == 0 else -1
+
+        # generate basis vector |sigma_1^l sigma_2^l>
+        ket = torch.zeros(4)
+        ket[i_l] = 1.0
+
+        for i_R in range(4):
+            # generate spin values sigmna_1^R, sigma_2^R
+            s1R = 1 if i_R < 2 else -1
+            s2R = 1 if i_R % 2 == 0 else -1
+
+            for i_L in range(4):
+                # generate spin values
+                s1L = 1 if i_L < 2 else -1
+                s2L = 1 if i_L % 2 == 0 else -1
+
+                # check dirac delta conditions
+                if (s1R == s1L) and (s2l == s2L):
+                    # generate basis vector <sigma_1^L, sigma_2^R|
+                    bra = torch.zeros(4)
+                    # use indices to determine which basis vector should be
+                    # used/where index for 1 is located
+                    bra[(i_R % 2) + 2 * (i_L // 2)] = 1.0
+
+                    outer_prod = torch.outer(ket, bra)
+
+                    outer_prod *= (
+                        np.exp(d_tau * J * s1l * s2l)
+                        * np.exp(-0.5 * np.log(np.tanh(d_tau * h)) * s1l * s1R)
+                        * np.exp(-0.5 * np.log(np.tanh(d_tau * h)) * s2L * s2R)
+                    )
+
+                    matr += outer_prod
+
+    # Apply operator n times
+    for i in range(n):
+        gs = matr @ gs
+        gs /= np.linalg.norm(gs)
+
+    return gs
 
 ########################################
 # MISC utils
@@ -106,8 +204,8 @@ def permutations_df(num_vis, num_hid):
             second column = hid config
             third column = full config
     """
-    vis_col_int = np.arange(0, 2 ** (num_vis + num_hid)) // 2 ** num_hid
-    hid_col_int = np.tile(np.arange(0, 2 ** num_hid), 2 ** num_vis)
+    vis_col_int = np.arange(0, 2**(num_vis + num_hid)) // 2**num_hid
+    hid_col_int = np.tile(np.arange(0, 2**num_hid), 2**num_vis)
 
     binary = pd.DataFrame({'vis': vis_col_int, 'hid': hid_col_int})
     binary['vis'] = binary['vis'].apply(
@@ -136,4 +234,3 @@ def tensordist_to_dfdist(dist, num_vis, num_hid):
     dfdist = permutations_df(num_vis, num_hid)
     dfdist['prob'] = dist[:, -1]
     return dfdist
-
