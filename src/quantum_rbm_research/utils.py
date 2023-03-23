@@ -46,35 +46,6 @@ def operator_at(operator, index, N):
     return op
 
 
-def tfi_e0(N, J, h):
-    """
-    Description: calculate (analytically) the ground state energy for the given
-    N, J, h (from Quantum Ising Phase Transitions in Transverse Ising Models
-    by Chakrabarti, with my own edits)
-    Parameters:
-        N (int): number of spins
-        J (int): interaction term (does this have to be an int?)
-        h (int): transverse field term (does this have to be an int?)
-    Returns:
-        e0 (float): ground state energy
-    """
-
-    # m an q, but with my own changes (pg. 19)
-    m = np.arange(-(N - 1) / 2, (N + 1) / 2, 1)
-    q = 2 * np.pi * m / N
-
-    # lambda bar (pg. 13)
-    lam = J / h
-
-    # w_q (pg. 20)
-    omega_q = np.sqrt(1 + 2 * lam * np.cos(q) + lam**2)
-
-    # I noticed that for h > J, the returned value was off by a factor of
-    # h from the minimum eigenvalue, which is why I added the second term.
-    # THIS MAY BE WRONG IF MY HAMILTONIAN MATRIX IS WRONG (MIN. EIGENVAL WRONG)
-    return -np.sum(omega_q) * np.max([h, 1])
-
-
 def twospin_e0(J, h, tau, n, initial_state=None):
     """
     Description: calculate ground state vector using conversion to Classical
