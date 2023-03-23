@@ -156,16 +156,16 @@ def permutations_df(num_vis, num_hid):
     return binary
 
 
-def dfdist_from_RBM(model):
+def dfdist_from_RBM(RBM):
     """
     Description: Generate dfdist (DataFrame) for given model
     Parameters:
-        model (RBM): RBM to generate distribution from
+        RBM (RBM): RBM to generate distribution from
     Returns:
         dfdist (DataFrame): dfdist
     """
-    dfdist = permutations_df(model.num_vis, model.num_hid)
-    dfdist['boltz'] = model.get_boltzmann_distribution()[:, -1]
-    dfdist['gibbs'] = model.get_gibbs_distribution()[:, -1]
+    dfdist = permutations_df(RBM.num_vis, RBM.num_hid)
+    dfdist['boltz'] = RBM.get_boltzmann_distribution()[:, -1]
+    dfdist['gibbs'] = RBM.get_gibbs_distribution()[:, -1]
 
     return dfdist

@@ -164,7 +164,6 @@ class RBM():
     def get_boltzmann_distribution(self):
         """
         Description: get boltzmann distribution of RBM.
-
         Returns:
             boltzmann_dist (Tensor): (2^N x N+1) Tensor, where
                 boltzmann_dist[:, :self.num_vis] = vis node configuration
