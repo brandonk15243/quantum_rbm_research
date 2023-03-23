@@ -1,12 +1,10 @@
 import quantum_rbm_research.utils as utils
 
-import numpy as np
 from scipy.linalg import expm
 import torch
 
 """
-Transverse Ising Hamiltonian with open boundary conditions
-# add periodic
+Transverse Ising Hamiltonian with coupling J and mag. field h
 """
 
 
@@ -21,49 +19,51 @@ class TransverseIsingHamiltonian():
         # Create matrix
         self.H = self._H0() + self._H1()
 
+    def e0_eig(self):
+        """
+        Description: Get ground state energy of self.H using minimum eigenvalue
+        Returns:
+            e0 (Tensor): ground state energy
+        """
+        e0 = torch.min(torch.real(torch.linalg.eigvals(self.H)))
+        return e0
+
     def e0_analytic(self):
         """
-        Description: calculate (analytically) the ground state energy for the
-        given N, J, h (from Quantum Ising Phase Transitions in Transverse Ising
-        Models by Chakrabarti, with my own edits)
-        Parameters:
-            N (int): number of spins
-            J (int): interaction term (does this have to be an int?)
-            h (int): transverse field term (does this have to be an int?)
+        Description: calculate (analytically) the ground state energy for Model
+        (from Quantum Ising Phase Transitions in Transverse Ising Models by
+        Chakrabarti), with my own edits
         Returns:
-            e0 (float): ground state energy
+            e0 (Tensor): ground state energy
         """
-        m = np.arange(-(self.N - 1) / 2, (self.N + 1) / 2, 1)
-        q = 2 * np.pi * m / self.N
+        m = torch.arange(-(self.N - 1) / 2, (self.N + 1) / 2, 1)
+        q = 2 * torch.pi * m / self.N
 
         # lambda bar (pg. 13)
         lam = self.J / self.h
 
         # w_q (pg. 20)
-        omega_q = np.sqrt(1 + 2 * lam * np.cos(q) + lam**2)
+        omega_q = torch.sqrt(1 + 2 * lam * torch.cos(q) + lam**2)
 
         # I noticed that for h > J, the returned value was off by a factor of
         # h from the minimum eigenvalue, which is why I added the second term.
-        e0 = -np.sum(omega_q) * np.max([self.h, 1])
+        # (pg. 20)
+        e0 = -torch.sum(omega_q) * max([self.h, 1])
         return e0
-
-    def e0_eig(self):
-        """
-        Description: Get ground state energy of self.H using minimum
-        eigenvalue and eigenvector
-        Returns:
-            e0 (Tensor): ground state energy
-        """
-        return np.min(np.linalg.eig(self.H)[0])
 
     def gs_eig(self):
         """
         Description: Get ground state vector of self.H using minimum
-        eigenvalue and eigenvector
+        eigenvector from numpy
         Returns:
             psi0 (Tensor): ground state vector
         """
-        return np.linalg.eig(self.H)[1][:, 0]
+        min_ind = torch.nonzero(
+            torch.real(torch.linalg.eig(self.H).eigenvalues) == self.e0_eig()
+        )
+
+        psi0 = torch.linalg.eig(self.H).eigenvectors[min_ind]
+        return psi0
 
     def gs_suzuki_trotter(self, tau, n, initial_state=None):
         """
@@ -81,7 +81,7 @@ class TransverseIsingHamiltonian():
             psi0 = initial_state
         else:
             psi0 = torch.rand(2**self.N)
-            psi0 /= np.linalg.norm(psi0)
+            psi0 /= torch.linalg.norm(psi0)
         delta_tau = tau / n
 
         # Suzuki Trotter decomp of imaginary time propagation
@@ -93,8 +93,7 @@ class TransverseIsingHamiltonian():
         # Operator n times
         for i in range(n):
             psi0 = time_prop @ psi0
-            if n % 50 == 0:
-                psi0 /= np.linalg.norm(psi0)
+            psi0 /= torch.linalg.norm(psi0)
 
         return psi0
 

@@ -1,7 +1,5 @@
 import numpy as np
-import scipy as sp
 import torch
-from torch import Tensor
 import unittest
 
 from quantum_rbm_research.Hamiltonian import TransverseIsingHamiltonian
@@ -11,12 +9,16 @@ import quantum_rbm_research.utils as utils
 class TestTranverseIsingHamiltonian(unittest.TestCase):
     def test_example(self):
         """
-        Test that calculated Hamiltonain (2-spin OBC) matches expected
+        Test that calculated Hamiltonian Matrix (2-spin OBC) matches expected
+        (derivation found in slides under Exercise: 2-spin Hamiltonian)
         """
         N = 2
         J = 2
         h = 1
         obc = True
+        H_model = TransverseIsingHamiltonian(N, J, h, obc=obc)
+        H_calculated = H_model.H
+
         H_expected = torch.Tensor([
             [-J, -h, -h, 0],
             [-h, J, 0, -h],
@@ -24,20 +26,39 @@ class TestTranverseIsingHamiltonian(unittest.TestCase):
             [0, -h, -h, -J]
         ])
 
-        H_model = TransverseIsingHamiltonian(N, J, h, obc=obc)
-        H_calculated = H_model.H
-
         torch.testing.assert_close(
             H_expected,
             H_calculated,
             msg="2-spin OBC Hamiltonian Matrix incorrect"
         )
 
+    def test_e0(self):
+        """
+        Test ground state energy methods for Model. Check that e0_analytic()
+        matches e0_eig(), which uses np.linalg.eig() to get minimum eigenvalue
+        (minimum energy)
+        """
+        for N in range(2, 10):
+            J = np.random.randint(1, 9)
+            h = np.random.randint(1, 9)
+            ham = TransverseIsingHamiltonian(N, J, h)
+
+            e0_eig = ham.e0_eig()
+            e0_analytic = ham.e0_analytic()
+
+            torch.testing.assert_close(
+                e0_eig,
+                e0_analytic,
+                msg=f"Eig e0: {e0_eig}\nAnalytic e0: {e0_analytic}")
+
     def test_gs(self):
         """
-        Test that Suzuki Trotter decomposition returns ground state vector:
-        lim_{n->infty}(e^{-Delta tau*H0}e^{-Delta tau*H1})^n|psi> propto |psi0>
-        Also test that simplification of Suzuki trotter returns same state
+        Test ground state methods for Model. Check that gs_suzuki and gs_simp,
+        which are the calculated ground state vectors using Suzuki Decomp.
+        of Imaginary Time Prop and simplification of Imaginary Time Prop
+        (more info in slides under Suzuki-Trotter Decomp. of Ground State
+        (Trans Ising) and Example: 2-spin OBC TFI), return the same vector
+        (check that simplification is correct)
         """
         N = 2
         J = 2
@@ -60,16 +81,7 @@ class TestTranverseIsingHamiltonian(unittest.TestCase):
             + "ground state by simplified Suzuki"
         )
 
-    def test_e0(self):
-        for N in range(10):
-            J = np.random.randint(1, 9)
-            h = np.random.randint(1, 9)
-            ham = TransverseIsingHamiltonian(N, J, h)
-
-            e0_eig = ham.e0_eig()
-            e0_analytic = ham.e0_analytic()
-
-            self.assertAlmostEqual(e0_eig, e0_analytic, 3)
+        gs_eig = H_model.gs_eig()
 
 
 if __name__ == "__main__":
