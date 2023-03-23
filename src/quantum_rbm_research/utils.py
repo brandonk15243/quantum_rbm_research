@@ -46,31 +46,6 @@ def operator_at(operator, index, N):
     return op
 
 
-def exp_op(op, K):
-    """
-    Description: calculate exponential of operator (matrix) using Taylor
-    expansion
-    Parameters:
-        op (Tensor): operator to exponentiate
-        K (int): number of terms to sum to (upper limit of sum)
-    Returns:
-        exp_op (Tensor): exponential of operator
-    """
-    exp_op = torch.zeros(op.size())
-
-    # For n == 0, op^0 = Identity
-    op_to_n = torch.eye(op.size()[0])
-
-    for n in range(K + 1):
-        # Add to sum: (op)^n/n!
-        exp_op += op_to_n / (math.factorial(n))
-
-        # Raise power of operator
-        op_to_n = op_to_n @ op
-
-    return exp_op
-
-
 def tfi_e0(N, J, h):
     """
     Description: calculate (analytically) the ground state energy for the given

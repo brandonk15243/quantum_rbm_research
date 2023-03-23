@@ -75,6 +75,7 @@ class TestTranverseIsingHamiltonian(unittest.TestCase):
         )
 
         # Operator n times
+        # see how normalization impacts error
         gs_suzuki = initial_state
         for i in range(n):
             gs_suzuki = suzuki_trotter @ gs_suzuki

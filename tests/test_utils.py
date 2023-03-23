@@ -64,25 +64,6 @@ class TestUtils(unittest.TestCase):
             msg="spinx_at_1 incorrect"
         )
 
-    def test_exp_op(self):
-        # Test operator
-        test_op = torch.Tensor([[1, 2], [2, -1]])
-
-        # Expected operator exponential using formula
-        exp_op_expected = torch.Tensor([
-            [16 / 3, 11 / 3],
-            [11 / 3, 5 / 3]
-        ])
-
-        # Calculated operator exponential using utils func
-        exp_op_calculated = utils.exp_op(test_op, 3)
-
-        torch.testing.assert_close(
-            exp_op_expected,
-            exp_op_calculated,
-            msg="Exponential of operator incorrect"
-        )
-
 
 if __name__ == "__main__":
     unittest.main()
