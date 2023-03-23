@@ -156,18 +156,16 @@ def permutations_df(num_vis, num_hid):
     return binary
 
 
-def tensordist_to_dfdist(dist, num_vis, num_hid):
+def dfdist_from_RBM(model):
     """
-    Description: convert a Tensor distribution into a DataFrame distribution
+    Description: Generate dfdist (DataFrame) for given model
     Parameters:
-        dist (Tensor): Tensor formatted as distribution
-        num_vis (int): num vis nodes
-        num_hid (int): num hid nodes
+        model (RBM): RBM to generate distribution from
     Returns:
-        dfdist (DataFrame): DataFrame, format of permutations_df with last
-        column = probability, titled 'prob'
+        dfdist (DataFrame): dfdist
     """
+    dfdist = permutations_df(model.num_vis, model.num_hid)
+    dfdist['boltz'] = model.get_boltzmann_distribution()[:, -1]
+    dfdist['gibbs'] = model.get_gibbs_distribution()[:, -1]
 
-    dfdist = permutations_df(num_vis, num_hid)
-    dfdist['prob'] = dist[:, -1]
     return dfdist
