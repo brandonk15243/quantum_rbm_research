@@ -1,6 +1,6 @@
 # quantum_rbm_research
 
-Quantum RBM Mapping Research
+Quantum RBM Mapping Research ([Project Slides](https://docs.google.com/presentation/d/1kaAVxVp4crH_DFdDClRj9LXH43BOkkvx_MhkqWa1wcI/edit?usp=sharing))
 
 ## Installation
 
