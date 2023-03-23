@@ -56,8 +56,8 @@ class TestTranverseIsingHamiltonian(unittest.TestCase):
         torch.testing.assert_close(
             gs_suzuki,
             gs_simp,
-            msg="Ground state by Suzuki differs from\
-            ground state by simplified Suzuki"
+            msg="Ground state by Suzuki differs from "
+            + "ground state by simplified Suzuki"
         )
 
     def test_e0(self):

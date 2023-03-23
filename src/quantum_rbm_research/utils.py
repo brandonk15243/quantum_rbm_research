@@ -88,28 +88,19 @@ def twospin_e0(J, h, tau, n, initial_state=None):
             s1R = 1 if i_R < 2 else -1
             s2R = 1 if i_R % 2 == 0 else -1
 
-            for i_L in range(4):
-                # generate spin values
-                s1L = 1 if i_L < 2 else -1
-                s2L = 1 if i_L % 2 == 0 else -1
+            # generate basis vector <sigma_1^R sigmna_2^R|
+            bra = torch.zeros(4)
+            bra[i_R] = 1.0
 
-                # check dirac delta conditions
-                if (s1R == s1L) and (s2l == s2L):
-                    # generate basis vector <sigma_1^L, sigma_2^R|
-                    bra = torch.zeros(4)
-                    # use indices to determine which basis vector should be
-                    # used/where index for 1 is located
-                    bra[(i_R % 2) + 2 * (i_L // 2)] = 1.0
+            outer_prod = torch.outer(ket, bra)
 
-                    outer_prod = torch.outer(ket, bra)
+            outer_prod *= (
+                np.exp(d_tau * J * s1l * s2l)
+                * np.exp(-0.5 * np.log(np.tanh(d_tau * h)) * s1l * s1R)
+                * np.exp(-0.5 * np.log(np.tanh(d_tau * h)) * s2l * s2R)
+            )
 
-                    outer_prod *= (
-                        np.exp(d_tau * J * s1l * s2l)
-                        * np.exp(-0.5 * np.log(np.tanh(d_tau * h)) * s1l * s1R)
-                        * np.exp(-0.5 * np.log(np.tanh(d_tau * h)) * s2L * s2R)
-                    )
-
-                    matr += outer_prod
+            matr += outer_prod
 
     # Apply operator n times
     for i in range(n):
