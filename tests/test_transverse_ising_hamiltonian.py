@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sp
 import torch
 from torch import Tensor
 import unittest
@@ -48,6 +49,8 @@ class TestTranverseIsingHamiltonian(unittest.TestCase):
         obc = True
         H_model = TransverseIsingHamiltonian(N, J, h, obc=obc)
 
+        print("Eigen: ", np.linalg.eig(H_model.H))
+
         # Get non-commutain Hamiltonian parts
         H0 = H_model._interaction_matr()
         H1 = H_model._external_matr()
@@ -60,14 +63,15 @@ class TestTranverseIsingHamiltonian(unittest.TestCase):
         print("Initial state: \n", initial_state)
 
         # Parameters
-        tau = 2
+        # heatmap of tau and n plotting error
+        tau = 1
         n = 50000
         delta_tau = tau / n
 
         # Suzuki Trotter
         suzuki_trotter = (
-            utils.exp_op(-delta_tau * H0, K)
-            * utils.exp_op(-delta_tau * H1, K)
+            torch.Tensor(sp.linalg.expm(-delta_tau * H0))
+            @ torch.Tensor(sp.linalg.expm(-delta_tau * H1))
         )
 
         # Operator n times
@@ -89,6 +93,8 @@ class TestTranverseIsingHamiltonian(unittest.TestCase):
             "Ground state after simplification): \n",
             gs_simp
         )
+
+        print("Error: ", np.linalg.norm(gs_simp - np.linalg.eig(H_model.H)[1][:, 0]))
 
     def test_H_rand(self):
         for N in range(10):
