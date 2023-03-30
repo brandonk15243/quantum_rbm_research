@@ -49,6 +49,8 @@ class TestTranverseIsingHamiltonian(unittest.TestCase):
             torch.testing.assert_close(
                 e0_eig,
                 e0_analytic,
+                atol=0,
+                rtol=.00001,
                 msg=f"Eig e0: {e0_eig}\nAnalytic e0: {e0_analytic}")
 
     def test_gs(self):
@@ -77,11 +79,9 @@ class TestTranverseIsingHamiltonian(unittest.TestCase):
         torch.testing.assert_close(
             gs_suzuki,
             gs_simp,
-            msg="Ground state by Suzuki differs from "
-            + "ground state by simplified Suzuki"
+            msg=f"Ground state suzuki: {gs_suzuki}\n"
+            + f"Ground State simp: {gs_simp}"
         )
-
-        gs_eig = H_model.gs_eig()
 
 
 if __name__ == "__main__":

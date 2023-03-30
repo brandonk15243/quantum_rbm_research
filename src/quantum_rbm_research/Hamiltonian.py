@@ -62,7 +62,10 @@ class TransverseIsingHamiltonian():
             torch.real(torch.linalg.eig(self.H).eigenvalues) == self.e0_eig()
         )
 
-        psi0 = torch.linalg.eig(self.H).eigenvectors[min_ind]
+        psi0 = torch.flatten(
+            torch.linalg.eig(self.H).eigenvectors[:, min_ind]
+        )
+
         return psi0
 
     def gs_suzuki_trotter(self, tau, n, initial_state=None):
@@ -89,6 +92,8 @@ class TransverseIsingHamiltonian():
             torch.Tensor(expm(-delta_tau * self._H0()))
             @ torch.Tensor(expm(-delta_tau * self._H1()))
         )
+
+        # time_prop2 = torch.linalg.matrix_power(time_prop, 4)
 
         # Operator n times
         for i in range(n):
