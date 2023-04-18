@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import networkx as nx
 import numpy as np
 import os
 import torch
@@ -7,6 +8,9 @@ import torch
 mylocation = os.path.dirname(__file__)
 figs_folder = os.path.join(mylocation, "figs")
 
+########################################
+# Plot RBM graphs
+########################################
 
 def plot_full(dfdist):
     """
@@ -61,6 +65,10 @@ def plot_groupby(option, dfdist):
 
     return fig
 
+########################################
+# Plot TFI Hamiltonian graphs
+########################################
+
 
 def plot_gs_eig_trotter_error(ham):
     # Generate heatmap comparing n (trotter number) and tau (time step)
@@ -111,6 +119,53 @@ def plot_gs_eig_trotter_error(ham):
 
     fig.colorbar(im, cax=cax)
     fig.set_layout_engine('tight')
+
+    return fig
+
+########################################
+# Plot Classical Ising graphs
+########################################
+
+
+def plot_ising(isingModel):
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    pos = dict((n, n) for n in isingModel.graph.nodes())
+
+    # Draw nodes
+    nx.draw_networkx_nodes(
+        isingModel.graph,
+        pos,
+        node_size=isingModel.N * 10,
+        ax=ax
+    )
+    # Labels
+    nx.draw_network_labels(
+        isingModel.graph,
+        pos,
+        font_size=10,
+        ax=ax
+    )
+
+    # Draw edges
+    nx.draw_networkx_edges(
+        isingModel.graph,
+        pos,
+        edgelist=isingModel.graph.edges(),
+        width=6,
+        alpha=0.5,
+        edge_color='b',
+        ax=ax
+    )
+    # Labels
+    edge_labels = nx.get_edge_attributes(isingModel.graph, 'weight')
+    nx.draw_network_edge_labels(
+        isingModel.graph,
+        pos,
+        edge_labels,
+        ax=ax
+    )
 
     return fig
 
