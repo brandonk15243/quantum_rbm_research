@@ -1,14 +1,21 @@
 import quantum_rbm_research.utils as utils
 
+import numpy as np
+import networkx as nx
 from scipy.linalg import expm
 import torch
 
-"""
-Transverse Ising Hamiltonian with coupling J and mag. field h
-"""
-
 
 class TransverseIsingHamiltonian():
+    """
+    Transverse-Field Ising Hamiltonian model with coupling J and transverse
+    field h
+
+    Currently only supports 1D Transverse Ising with N spins
+
+    Select boundary conditions using obc
+    """
+
     def __init__(self, N, J, h, obc=False):
         # Params
         self.N = N
@@ -102,6 +109,52 @@ class TransverseIsingHamiltonian():
 
         return psi0
 
+    def convert_to_classical(self, tau, n):
+        """
+        Description: convert a TFI model to a classical spin model according
+        to mapping on slide 16
+        Parameters:
+            tau (float): Time propagation parameter
+            n (int): num of new dimensions
+        Returns:
+            isingHamiltonian (IsingHamiltonian): Ising Hamiltonian object
+            representing classical conversion of self
+        """
+        # Suzuki trotter param
+        delta_tau = tau / n
+
+        N = self.N + (not self.obc)
+
+        """
+        Create graph using networkX
+        Nxn lattice with weights between vertical, horizontal neighbors
+
+        (N columns, n rows)
+        NOTE: graph labels are [x,y], or [col, row]
+        o-o-o-...-o
+        | | | ... |
+        o-o-o-...-o
+            ...
+        o-o-o-...-o
+        """
+        G = nx.grid_2d_graph(N, n)
+
+        # Give all nodes a 'spin' attribute: +/- 1
+        # Default to 1 for now
+        for node in G.nodes:
+            G.nodes[node]['spin'] = 1
+
+        # Create IsingHamiltonian object with params
+        isingHamiltonian = IsingHamiltonian(
+            G,
+            self.J,
+            self.h,
+            delta_tau,
+            N,
+            n)
+
+        return isingHamiltonian
+
     def _H0(self):
         """
         Description: Return Hamiltonian matrix containing just interaction
@@ -136,3 +189,42 @@ class TransverseIsingHamiltonian():
             H1 += spinx_i
 
         return -self.h * H1
+
+
+class IsingHamiltonian():
+    """
+    Classical Ising Hamiltonian model. Used to transition from TFI to
+    RBM. Particles and interactions are stored using networkx 2d graph.
+
+    Spins are stored in node['spin'] = {+1, -1}
+
+    Size of model depends on TFI and Trotter number (expansion in new
+    dimension)
+    """
+
+    def __init__(self, graph, J, h, delta_tau, N, n):
+        self.graph = graph
+        self.J = J
+        self.h = h
+        self.delta_tau = delta_tau
+
+    def update_weights(self):
+        # Iterate through edges
+        for edge in self.graph.edges:
+            # if horizontal
+            if abs(edge[0][0] - edge[1][0]) == 1:
+                self.graph.edges[edge]['weight'] = (
+                    self.delta_tau
+                    * self.J
+                    * self.graph.nodes[edge[0]]['spin']
+                    * self.graph.nodes[edge[1]]['spin']
+                )
+            # else, vertical
+            else:
+                self.graph.edges[edge]['weight'] = (
+                    -0.5
+                    * np.log(np.tanh(self.delta_tau * self.h))
+                    * self.graph.nodes[edge[0]]['spin']
+                    * self.graph.nodes[edge[1]]['spin']
+                )
+            print(self.graph.get_edge_data(edge[0], edge[1]))
