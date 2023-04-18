@@ -207,6 +207,8 @@ class IsingHamiltonian():
         self.J = J
         self.h = h
         self.delta_tau = delta_tau
+        self.N = N
+        self.n = n
 
     def update_weights(self):
         # Iterate through edges
@@ -227,4 +229,3 @@ class IsingHamiltonian():
                     * self.graph.nodes[edge[0]]['spin']
                     * self.graph.nodes[edge[1]]['spin']
                 )
-            print(self.graph.get_edge_data(edge[0], edge[1]))

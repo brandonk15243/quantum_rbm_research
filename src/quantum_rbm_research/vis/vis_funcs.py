@@ -137,15 +137,16 @@ def plot_ising(isingModel):
     nx.draw_networkx_nodes(
         isingModel.graph,
         pos,
-        node_size=isingModel.N * 10,
+        node_size=600,
         ax=ax
     )
     # Labels
-    nx.draw_network_labels(
+    nx.draw_networkx_labels(
         isingModel.graph,
         pos,
-        font_size=10,
-        ax=ax
+        font_size=9,
+        font_color='w',
+        ax=ax,
     )
 
     # Draw edges
@@ -155,12 +156,14 @@ def plot_ising(isingModel):
         edgelist=isingModel.graph.edges(),
         width=6,
         alpha=0.5,
-        edge_color='b',
+        edge_color='k',
         ax=ax
     )
     # Labels
     edge_labels = nx.get_edge_attributes(isingModel.graph, 'weight')
-    nx.draw_network_edge_labels(
+    for key in edge_labels.keys():
+        edge_labels[key] = round(edge_labels[key], 3)
+    nx.draw_networkx_edge_labels(
         isingModel.graph,
         pos,
         edge_labels,
