@@ -129,7 +129,7 @@ def plot_gs_eig_trotter_error(ham):
 
 def plot_ising(isingModel):
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 15))
 
     pos = dict((n, n) for n in isingModel.graph.nodes())
 

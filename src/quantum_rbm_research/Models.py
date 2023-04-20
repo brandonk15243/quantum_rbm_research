@@ -297,20 +297,67 @@ class RBM():
 
 
 class RBM2D():
-    def __init__(self, vis_dim, hid_dim, k=1, alpha=1e-3, batch_size=1):
+    def __init__(self, vis, hid, WH, WV, N, n, obc=False):
         """
         This is a class for an RBM with 2D visible and hidden nodes.
         Attributes:
-            num_vis (Tuple(int,int)): dimension of visible nodes
-            num_hid (Tuple(int,int)): dimension of hidden nodes
-            k (int): parameter for CD-k
-            alpha (float): learning rate
-            batch_size (int): batch size for batched learning
+            vis (2d Tensor): hidden nodes
+            hid (3d Tensor): visible nodes
         """
 
-        self.vis_dim = vis_dim
-        self.hid_dim = hid_dim
-        self.k = k
-        self.alpha = alpha
-        self.batch_size = batch_size
+        self.vis = vis
+        self.hid = hid
+
+        self.WH_L = 0.5 * np.arccosh(np.exp(2 * np.abs(WH)))
+        self.WH_R = np.sign(WH) * self.WH_L
+
+        self.WV_T = 0.5 * np.arccosh(np.exp(2 * np.abs(WV)))
+        self.WV_B = np.sign(WV) * self.WV_T
+
+        self.N = N
+        self.n = n
+
+        self.obc = obc
+
+    def sample_hid(self):
+        # Matrix for hidden node probability
+        hid_prob = torch.zeros_like(self.hid)
+        # Calculating horizontal hidden nodes
+        # Add periodicity
+
+        first_col = torch.reshape(self.vis[0, :, 0], (1, self.n, 1))
+        vis_periodic = torch.cat((self.vis, first_col), dim=2)
+
+        # Reshape to fit conv1d function
+        vis_periodic = torch.reshape(vis_periodic, (self.n, 1, self.N + 1))
+
+        # Horizontal filter
+        filt_h = torch.Tensor([[[self.WH_L, self.WH_R]]])
+
+        # Convolve
+        hidden_horizontal = Func.conv1d(vis_periodic, filt_h)
+
+        # Reshape back to fit and set hidden[0] to horizontal hidden
+        hidden_horizontal = torch.reshape(hidden_horizontal, self.hid[0].shape)
+        hid_prob[0] = hidden_horizontal
+
+        # Calculate vertical hidden nodes
+        # Vertical filter
+        filt_v = torch.Tensor([[[[self.WV_T], [self.WV_B]]]])
+
+        # Convolve
+        hidden_vertical = Func.conv2d(self.vis, filt_v)
+
+        # Pad a 0, since horizontal nodes are taller than vertical nodes
+        hidden_vertical = torch.cat(
+            (hidden_vertical, torch.zeros(1, 1, self.N)),
+            dim=1
+        )
+
+        # Set hidden[1] to vertical hidden
+        hid_prob[1] = hidden_vertical
+
+        # Activation function and bernoulli
+        self.vis = (torch.bernoulli(torch.sigmoid(hid_prob)) - 0.5) * 2
+        print(self.vis)
 # eqn. 21

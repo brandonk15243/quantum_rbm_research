@@ -21,11 +21,22 @@ class TestIsingHamiltonian(unittest.TestCase):
 
         IModel = TFIModel.convert_to_classical(0.1, 10)
 
-        IModel.update_weights()
-
         fig = vis_funcs.plot_ising(IModel)
         fig.show()
         plt.show()
+
+    def test_to_rbm(self):
+        N = 4
+        J = 2
+        h = 1
+        obc = False
+        TFIModel = TransverseIsingHamiltonian(N, J, h, obc=obc)
+
+        IModel = TFIModel.convert_to_classical(0.1, 10)
+
+        rbm = IModel.convert_to_rbm()
+
+        rbm.sample_hid()
 
 
 if __name__ == "__main__":

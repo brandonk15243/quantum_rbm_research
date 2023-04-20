@@ -1,4 +1,5 @@
 import quantum_rbm_research.utils as utils
+import quantum_rbm_research.Models as Models
 
 import numpy as np
 import networkx as nx
@@ -123,8 +124,6 @@ class TransverseIsingHamiltonian():
         # Suzuki trotter param
         delta_tau = tau / n
 
-        N = self.N + (not self.obc)
-
         """
         Create graph using networkX
         Nxn lattice with weights between vertical, horizontal neighbors
@@ -137,21 +136,21 @@ class TransverseIsingHamiltonian():
             ...
         o-o-o-...-o
         """
-        G = nx.grid_2d_graph(N, n)
+        G = nx.grid_2d_graph(self.N, n)
 
         # Give all nodes a 'spin' attribute: +/- 1
-        # Default to 1 for now
-        for node in G.nodes:
-            G.nodes[node]['spin'] = 1
+        # Default to 1
+        nx.set_node_attributes(G, 1, 'spin')
 
         # Create IsingHamiltonian object with params
         isingHamiltonian = IsingHamiltonian(
-            G,
             self.J,
             self.h,
             delta_tau,
-            N,
-            n)
+            self.N,
+            n,
+            graph=G,
+            obc=self.obc)
 
         return isingHamiltonian
 
@@ -202,30 +201,46 @@ class IsingHamiltonian():
     dimension)
     """
 
-    def __init__(self, graph, J, h, delta_tau, N, n):
-        self.graph = graph
+    def __init__(self, J, h, delta_tau, N, n, graph=None, obc=False):
+        if graph is None:
+            self.graph = nx.grid_2d_graph(N, n)
+            nx.set_node_attributes(self.graph, 1, 'spin')
+        else:
+            self.graph = graph
         self.J = J
         self.h = h
         self.delta_tau = delta_tau
         self.N = N
         self.n = n
+        self.obc = obc
 
-    def update_weights(self):
+        # WH is horizontal coupling,
+        # WV is vertical coupling
+        self.WH = self.delta_tau * self.J
+        self.WV = -0.5 * np.log(np.tanh(self.delta_tau * self.h))
+
         # Iterate through edges
         for edge in self.graph.edges:
             # if horizontal
             if abs(edge[0][0] - edge[1][0]) == 1:
-                self.graph.edges[edge]['weight'] = (
-                    self.delta_tau
-                    * self.J
-                    * self.graph.nodes[edge[0]]['spin']
-                    * self.graph.nodes[edge[1]]['spin']
-                )
+                self.graph.edges[edge]['weight'] = self.WH
             # else, vertical
             else:
-                self.graph.edges[edge]['weight'] = (
-                    -0.5
-                    * np.log(np.tanh(self.delta_tau * self.h))
-                    * self.graph.nodes[edge[0]]['spin']
-                    * self.graph.nodes[edge[1]]['spin']
-                )
+                self.graph.edges[edge]['weight'] = self.WV
+
+    def convert_to_rbm(self):
+        # Hidden nodes are (2xnxN)
+        hid = torch.zeros((2, self.n, self.N))
+
+        # Visible nodes are (1xNxn)
+        vis = torch.zeros((1, self.n, self.N))
+
+        return Models.RBM2D(
+            vis,
+            hid,
+            self.WH,
+            self.WV,
+            self.N,
+            self.n,
+            obc=self.obc
+        )
