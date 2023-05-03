@@ -1,7 +1,9 @@
+
 import math
 import numpy as np
 import pandas as pd
 import torch
+
 
 ########################################
 # Quantum utils
@@ -10,15 +12,15 @@ import torch
 
 # Pauli Matrices
 def sigma_x():
-    return torch.Tensor([[0, 1], [1, 0]])
+    return torch.Tensor([[0., 1.], [1., 0.]])
 
 
 def sigma_y():
-    return torch.Tensor([[0, 1j], [1j, 0]])
+    return torch.Tensor([[0., 1.j], [1.j, 0.]])
 
 
 def sigma_z():
-    return torch.Tensor([[1, 0], [0, -1]])
+    return torch.Tensor([[1., 0.], [0., -1.]])
 
 
 # Identity
@@ -130,6 +132,15 @@ def permutations(N):
     return binary
 
 
+def permutations_pm_one(N):
+    """
+    Description: Same as permutations(N), but replaces 0 with -1
+    """
+    perm = permutations(N)
+    perm[perm == 0] = -1
+    return perm
+
+
 def permutations_df(num_vis, num_hid):
     """
     Description: get all possible permutations for N bits (start at 0)
@@ -169,3 +180,6 @@ def dfdist_from_RBM(RBM):
     dfdist['gibbs'] = RBM.get_gibbs_distribution()[:, -1]
 
     return dfdist
+
+
+

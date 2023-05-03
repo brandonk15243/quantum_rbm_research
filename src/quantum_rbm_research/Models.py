@@ -77,6 +77,8 @@ class RBM():
         except ValueError as err:
             print("set_hid_bias error: " + repr(err))
 
+
+    # derive activation for +/- 1
     def prob_h_given_v(self, vis):
         """
         Description: Calculate p(h==1|v)
@@ -86,7 +88,7 @@ class RBM():
             prob_h (Tensor): conditional prob. of hidden nodes
         """
 
-        prob_h = torch.sigmoid(Func.linear(vis, self.W.t(), self.hid_bias))
+        prob_h = torch.sigmoid(2 * Func.linear(vis, self.W.t(), self.hid_bias))
         return prob_h
 
     def prob_v_given_h(self, hid):
@@ -98,7 +100,7 @@ class RBM():
             prob_v (Tensor): conditional prob. of visible nodes
         """
 
-        prob_v = torch.sigmoid(Func.linear(hid, self.W, self.vis_bias))
+        prob_v = torch.sigmoid(2 * Func.linear(hid, self.W, self.vis_bias))
         return prob_v
 
     def sample_h(self, vis):
@@ -112,7 +114,7 @@ class RBM():
         """
 
         prob_h = self.prob_h_given_v(vis)
-        hid_bin = torch.bernoulli(prob_h)
+        hid_bin = (torch.bernoulli(prob_h) - 0.5) * 2
 
         return hid_bin
 
@@ -127,7 +129,7 @@ class RBM():
         """
 
         prob_v = self.prob_v_given_h(hid)
-        vis_bin = torch.bernoulli(prob_v)
+        vis_bin = (torch.bernoulli(prob_v) - 0.5) * 2
 
         return vis_bin
 
@@ -173,7 +175,7 @@ class RBM():
 
         N = self.num_hid + self.num_vis
         boltzmann_dist = torch.cat(
-            (utils.permutations(N), torch.zeros((2**N, 1))),
+            (utils.permutations_pm_one(N), torch.zeros((2**N, 1))),
             dim=1
         )
 
@@ -237,13 +239,16 @@ class RBM():
 
         N = self.num_vis + self.num_hid
         gibbs_dist = torch.cat(
-            (utils.permutations(N), torch.zeros((2**N, 1))),
+            (utils.permutations_pm_one(N), torch.zeros((2**N, 1))),
             dim=1
         )
 
         # run samples, last column is count
         for i in range(samples):
-            vis_init = torch.randint(1, (self.num_vis,)).float()
+            vis_init = (
+                torch.bernoulli(
+                    torch.empty(self.num_vis).uniform_(0, 1))
+                - 0.5) * 2
             sample = self.sample_gibbs(vis_init, steps=steps)
             mask = (gibbs_dist[:, :N] == sample).all(dim=1)
             gibbs_dist[mask, -1] += 1
@@ -297,16 +302,18 @@ class RBM():
 
 
 class RBM2D():
-    def __init__(self, vis, hid, WH, WV, N, n, obc=False):
+    def __init__(self, vis, hid, WH, WV, bias_z, N, n, obc=False, parent=None):
         """
         This is a class for an RBM with 2D visible and hidden nodes.
         Attributes:
             vis (2d Tensor): hidden nodes
             hid (3d Tensor): visible nodes
+            N (int): number of spins (width/horizontal)
+            n (int): trotter number, number in new dimension (height/vertical)
         """
 
-        self.vis = vis
-        self.hid = hid
+        self.vis = vis  # n by N
+        self.hid = hid  # 2 by n by N
 
         self.WH_L = 0.5 * np.arccosh(np.exp(2 * np.abs(WH)))
         self.WH_R = np.sign(WH) * self.WH_L
@@ -314,50 +321,177 @@ class RBM2D():
         self.WV_T = 0.5 * np.arccosh(np.exp(2 * np.abs(WV)))
         self.WV_B = np.sign(WV) * self.WV_T
 
+        self.bias_z = bias_z
+
         self.N = N
         self.n = n
 
         self.obc = obc
 
-    def sample_hid(self):
+        self.parent = parent
+
+    def prob_h_given_v(self, vis):
+        # add option to have periodicity in time
+        # keep mask to indicate which elements are used in computation ?
         # Matrix for hidden node probability
         hid_prob = torch.zeros_like(self.hid)
-        # Calculating horizontal hidden nodes
-        # Add periodicity
 
-        first_col = torch.reshape(self.vis[0, :, 0], (1, self.n, 1))
-        vis_periodic = torch.cat((self.vis, first_col), dim=2)
+        # Calculating horizontal hidden nodes
+        # Add periodicity in horizontal
+
+        first_col = torch.reshape(vis[0, :, 0], (1, self.n, 1))
+        vis_periodic_h = torch.cat((vis, first_col), dim=2)
 
         # Reshape to fit conv1d function
-        vis_periodic = torch.reshape(vis_periodic, (self.n, 1, self.N + 1))
+        vis_periodic_h = torch.reshape(vis_periodic_h, (self.n, 1, self.N + 1))
 
         # Horizontal filter
         filt_h = torch.Tensor([[[self.WH_L, self.WH_R]]])
 
         # Convolve
-        hidden_horizontal = Func.conv1d(vis_periodic, filt_h)
+        hidden_horizontal = Func.conv1d(vis_periodic_h, filt_h)
 
         # Reshape back to fit and set hidden[0] to horizontal hidden
         hidden_horizontal = torch.reshape(hidden_horizontal, self.hid[0].shape)
         hid_prob[0] = hidden_horizontal
 
         # Calculate vertical hidden nodes
+        # Add periodicity in vertical
+        first_row = torch.reshape(vis[0, 0, :], (1, 1, self.N))
+        vis_periodic_v = torch.cat((vis, first_row), dim=1)
+
         # Vertical filter
         filt_v = torch.Tensor([[[[self.WV_T], [self.WV_B]]]])
 
-        # Convolve
-        hidden_vertical = Func.conv2d(self.vis, filt_v)
+        # Add
 
-        # Pad a 0, since horizontal nodes are taller than vertical nodes
-        hidden_vertical = torch.cat(
-            (hidden_vertical, torch.zeros(1, 1, self.N)),
-            dim=1
-        )
+        # Convolve
+        hidden_vertical = Func.conv2d(vis_periodic_v, filt_v)
 
         # Set hidden[1] to vertical hidden
         hid_prob[1] = hidden_vertical
 
         # Activation function and bernoulli
-        self.vis = (torch.bernoulli(torch.sigmoid(hid_prob)) - 0.5) * 2
-        print(self.vis)
+        prob_h = torch.sigmoid(2*hid_prob)
+
+        return prob_h
+
+    def prob_v_given_h(self, hid):
+        vis_prob = torch.zeros_like(self.vis)
+
+        for i, row in enumerate(vis_prob[0]):
+            for j, item in enumerate(row):
+                # Calculate horizontal contributions
+                vis_prob[0][i][j] += hid[0][i][j] * self.WH_R + hid[0][i][j-1] * self.WH_L
+                # Calculate vertical contributions
+                vis_prob[0][i][j] += hid[1][i][j] * self.WV_T + hid[1][i-1][j] * self.WV_B
+
+        bias_tensor = torch.ones_like(self.vis) * self.bias_z
+
+        return torch.sigmoid(2*(vis_prob + bias_tensor))
+
+    def sample_h(self, vis):
+        """
+        Description: Sample hidden nodes given visible nodes using given
+        sampling distribution
+        Parameters:
+            vis (Tensor): visible node values
+        Returns:
+            hid_bin (Tensor): sampled hidden values from chosen distribution
+        """
+
+        prob_h = self.prob_h_given_v(vis)
+        hid_bin = (torch.bernoulli(prob_h) - 0.5) * 2
+
+        return hid_bin
+
+    def sample_v(self, hid):
+        """
+        Description: Sample hidden nodes given visible nodes using given
+        sampling distribution
+        Parameters:
+            hid (Tensor): hidden node values
+        Returns:
+            vis_bin (Tensor): sampled hidden values from chosen distribution
+        """
+
+        prob_v = self.prob_v_given_h(hid)
+        vis_bin = (torch.bernoulli(prob_v) - 0.5) * 2
+
+        return vis_bin
+
+
+    def gibbs_step(self, vis):
+        """
+        Description: Perform a gibbs step given visible values
+        Parameters:
+            vis (Tensor): visible values
+        Returns:
+            sampled_vis (Tensor): sampled visible values
+        """
+
+        sampled_hid = self.sample_h(vis)
+        sampled_vis = self.sample_v(sampled_hid)
+        return sampled_vis, sampled_hid
+
+
+    def sample_gibbs(self, vis_initial, steps=10):
+        """
+        Description: Sample visible and hidden nodes (discrete) by gibbs
+        sampling
+        Parameters:
+            vis_initial (Tensor): initial visible node states
+            steps (int): number of gibbs steps to take
+        Returns:
+            gibbs_sample (Tensor): discrete values of RBM
+        """
+
+        for i in range(steps):
+            # Take gibbs step
+            if i == 0:
+                v, h = self.gibbs_step(vis_initial)
+            else:
+                v, h = self.gibbs_step(v)
+
+        return v, h
+
+    def get_gibbs_distribution(self, steps=10, samples=10000):
+        """
+        Description: run sample_gibbs [samples] times to generate a
+        distribution
+        Parmeters:
+            vis_initial (Tensor): initial visible node states
+            steps (int): number of gibbs steps to take
+            samples (int): number of times to run sample_gibbs
+        Returns:
+            gibbs_dist (Tensor): (see get_boltzmann_distribution
+            return description)
+        """
+
+        gibbs_dist = torch.zeros_like(self.vis)
+        for i in range(samples):
+            vis_init_3dim = (torch.bernoulli(torch.empty((1, self.n, self.N)).uniform_(0, 1)) - 0.5) * 2
+            gibbs_dist += (self.sample_gibbs(vis_init_3dim, steps=steps)[0] == 1)
+
+        gibbs_dist /= samples
+
+        return gibbs_dist
+
+    def get_gibbs_average_z_mag(self, steps=10, samples=10000):
+        """
+        Description: Gibbs sampling to get average z magnetization
+        Parameters:
+            steps (int):    num gibbs steps
+            samples (int):  num samples
+        Returns:
+            z (float):      average z magnetization
+        """
+        z = 0
+        for i in range(samples):
+            vis_init_3dim = (torch.bernoulli(torch.empty((1, self.n, self.N)).uniform_(0, 1)) - 0.5) * 2
+            z += torch.mean(self.sample_gibbs(vis_init_3dim, steps=steps)[0])
+
+        return z / samples
+
 # eqn. 21
+# mention Heisenberg hamiltonian

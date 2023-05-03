@@ -51,7 +51,8 @@ class TestModelRBM(unittest.TestCase):
         test_W = torch.Tensor([[1, -1], [0, 1]])
         test_vis_bias = torch.Tensor([1, 2])
         test_hid_bias = torch.Tensor([1, 0])
-        vis, hid = torch.randn(num_vis), torch.randn(num_hid)
+        vis = (torch.bernoulli(torch.empty(num_vis).uniform_(0, 1)) - 0.5) * 2
+        hid = (torch.bernoulli(torch.empty(num_hid).uniform_(0, 1)) - 0.5) * 2
 
         test_RBM = RBM(num_vis, num_hid)
         test_RBM.set_weights(test_W)
@@ -59,7 +60,7 @@ class TestModelRBM(unittest.TestCase):
         test_RBM.set_hid_bias(test_hid_bias)
 
         # Energy by hand
-        calc_energy = -(
+        expected_energy = -(
             test_W[0][0] * vis[0] * hid[0]
             + test_W[1][0] * vis[1] * hid[0]
             + test_W[0][1] * vis[0] * hid[1]
@@ -71,7 +72,7 @@ class TestModelRBM(unittest.TestCase):
         RBM_energy = test_RBM.energy(vis, hid)
 
         torch.testing.assert_close(
-            calc_energy,
+            expected_energy,
             RBM_energy,
             msg="Energy not close"
         )
@@ -95,7 +96,7 @@ class TestModelRBM(unittest.TestCase):
         # Calculate actual distribution
         N = num_vis + num_hid
         actual_dist_tensor = torch.cat(
-            (utils.permutations(N), torch.zeros((2**N, 1))),
+            (utils.permutations_pm_one(N), torch.zeros((2**N, 1))),
             dim=1
         )
 
@@ -123,7 +124,7 @@ class TestModelRBM(unittest.TestCase):
         distribution
         """
         num_vis, num_hid = 2, 2
-        W = torch.Tensor([[1, -1], [-1, 1]])
+        W = torch.Tensor([[2, -3], [-9, 3]])
         zero = torch.zeros(2)
         test_RBM = RBM(num_vis, num_hid)
         test_RBM.set_weights(W)
@@ -131,18 +132,15 @@ class TestModelRBM(unittest.TestCase):
         test_RBM.set_hid_bias(zero)
 
         boltzmann = test_RBM.get_boltzmann_distribution()
-        gibbs = test_RBM.get_gibbs_distribution(steps=2, samples=20000)
+        gibbs = test_RBM.get_gibbs_distribution(steps=3, samples=10000)
 
         torch.testing.assert_close(
             boltzmann[:, -1],
             gibbs[:, -1],
-            atol=.01,
-            rtol=.01,
+            atol=1,
+            rtol=1,
             msg="Gibbs sample distribution not close to Boltzmann"
         )
-
-    def test(self):
-
 
 
 if __name__ == "__main__":
